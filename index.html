@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A colorful browser puzzle game inspired by Wang tiles."
+    />
+    <title>Chromaweld</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar" aria-label="Game controls">
+        <div>
+          <p class="eyebrow">Wang tile puzzle</p>
+          <h1>Chromaweld</h1>
+        </div>
+        <button class="primary-button" id="new-game-button" type="button">
+          New Board
+        </button>
+      </section>
+
+      <section class="game-layout" aria-label="Chromaweld game">
+        <aside class="panel status-panel">
+          <div>
+            <span class="metric-label">Score</span>
+            <strong id="score">0</strong>
+          </div>
+          <div>
+            <span class="metric-label">Streak</span>
+            <strong id="streak">0</strong>
+          </div>
+          <div>
+            <span class="metric-label">Tiles Left</span>
+            <strong id="tiles-left">0</strong>
+          </div>
+        </aside>
+
+        <section class="board-panel" aria-label="Tile board">
+          <div class="board-frame">
+            <div id="board" class="board" role="grid" aria-label="Puzzle grid"></div>
+          </div>
+        </section>
+
+        <aside class="panel tray-panel">
+          <h2>Tile Tray</h2>
+          <div id="tray" class="tray" aria-label="Available tiles"></div>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
