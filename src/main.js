@@ -14,6 +14,7 @@ const goalMeterElement = document.querySelector("#goal-meter");
 const messageElement = document.querySelector("#message");
 const modeLabelElement = document.querySelector("#mode-label");
 const comboLabelElement = document.querySelector("#combo-label");
+const boardPanelElement = document.querySelector(".board-panel");
 const roundPanel = document.querySelector("#round-panel");
 const roundKicker = document.querySelector("#round-kicker");
 const roundTitle = document.querySelector("#round-title");
@@ -852,6 +853,7 @@ function renderStats() {
 
 function renderRoundPanel() {
   roundPanel.hidden = !state.roundOver;
+  boardPanelElement.classList.toggle("is-round-over", state.roundOver);
   nextButton.hidden = !state.roundOver || !hasNextMode();
 }
 

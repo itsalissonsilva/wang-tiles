@@ -109,7 +109,7 @@ button {
 
 .settings-row {
   justify-content: center;
-  margin-top: 18px;
+  margin-top: 2px;
 }
 
 .eyebrow,
@@ -135,7 +135,7 @@ h2 {
 }
 
 h1 {
-  font-size: clamp(2.45rem, 8vw, 5rem);
+  font-size: clamp(2.15rem, 7vw, 4.25rem);
   line-height: 0.9;
 }
 
@@ -233,18 +233,18 @@ h2 {
 
 .mode-list {
   display: grid;
-  grid-template-columns: minmax(220px, 340px);
-  gap: 9px;
+  grid-template-columns: minmax(200px, 280px);
+  gap: 7px;
   justify-content: center;
-  width: min(340px, 100%);
+  width: min(280px, 100%);
 }
 
 .mode-card {
   display: grid;
   align-content: center;
-  gap: 5px;
-  min-height: 86px;
-  padding: 12px 14px;
+  gap: 3px;
+  min-height: 64px;
+  padding: 8px 10px;
   color: var(--ink);
   text-align: center;
 }
@@ -284,21 +284,21 @@ h2 {
 .mode-card span,
 .round-panel span {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-style: normal;
   font-weight: 850;
   text-transform: uppercase;
 }
 
 .mode-card strong {
-  font-size: clamp(1.4rem, 5vw, 2.3rem);
+  font-size: clamp(1.1rem, 4vw, 1.65rem);
   line-height: 0.95;
 }
 
 .mode-card small,
 .mode-card em {
   color: var(--soft);
-  font-size: 0.95rem;
+  font-size: 0.76rem;
   font-style: normal;
 }
 
@@ -331,6 +331,12 @@ h2 {
 .board-panel {
   position: relative;
   min-width: 0;
+}
+
+.board-panel.is-round-over .board-frame {
+  opacity: 0.34;
+  filter: saturate(0.7);
+  pointer-events: none;
 }
 
 .board-frame {
@@ -460,10 +466,15 @@ h2 {
 .round-panel {
   position: absolute;
   inset: 50% auto auto 50%;
+  z-index: 8;
   width: min(360px, calc(100% - 28px));
   padding: 18px;
   transform: translate(-50%, -50%);
   text-align: center;
+  background: var(--surface-strong);
+  box-shadow:
+    0 0 0 999px rgb(0 0 0 / 44%),
+    var(--shadow);
 }
 
 .round-panel strong {
@@ -513,6 +524,16 @@ h2 {
 .tray-panel {
   display: grid;
   gap: 14px;
+}
+
+.tray-panel .settings-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tray-panel .secondary-button {
+  min-width: 0;
+  padding-inline: 8px;
 }
 
 .tray-header {
