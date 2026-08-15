@@ -1,958 +1,687 @@
 const menuScreen = document.querySelector("#menu-screen");
 const gameScreen = document.querySelector("#game-screen");
-const levelList = document.querySelector("#level-list");
 const boardElement = document.querySelector("#board");
-const paletteElement = document.querySelector("#palette");
-const filledCountElement = document.querySelector("#filled-count");
-const threadCountElement = document.querySelector("#thread-count");
-const motifCountElement = document.querySelector("#motif-count");
-const repeatCountElement = document.querySelector("#repeat-count");
-const stockCountElement = document.querySelector("#stock-count");
-const goalsElement = document.querySelector("#goals");
+const trayElement = document.querySelector("#tray");
+const scoreElement = document.querySelector("#score");
+const streakElement = document.querySelector("#streak");
+const tilesLeftElement = document.querySelector("#tiles-left");
+const bestScoreElement = document.querySelector("#best-score");
+const coresLitElement = document.querySelector("#cores-lit");
+const fluxCountElement = document.querySelector("#flux-count");
+const timeLeftElement = document.querySelector("#time-left");
+const timeCardElement = document.querySelector("#time-card");
+const goalMeterElement = document.querySelector("#goal-meter");
 const messageElement = document.querySelector("#message");
-const levelKickerElement = document.querySelector("#level-kicker");
-const levelTitleElement = document.querySelector("#level-title");
-const winPanel = document.querySelector("#win-panel");
-const winTitle = document.querySelector("#win-title");
-const winSummary = document.querySelector("#win-summary");
-const backButton = document.querySelector("#back-button");
-const themeButton = document.querySelector("#theme-button");
+const modeLabelElement = document.querySelector("#mode-label");
+const comboLabelElement = document.querySelector("#combo-label");
+const boardPanelElement = document.querySelector(".board-panel");
+const roundPanel = document.querySelector("#round-panel");
+const roundKicker = document.querySelector("#round-kicker");
+const roundTitle = document.querySelector("#round-title");
+const roundSummary = document.querySelector("#round-summary");
 const soundButton = document.querySelector("#sound-button");
-const undoButton = document.querySelector("#undo-button");
-const clearButton = document.querySelector("#clear-button");
+const themeButton = document.querySelector("#theme-button");
+const menuButton = document.querySelector("#menu-button");
+const rotateButton = document.querySelector("#rotate-button");
 const hintButton = document.querySelector("#hint-button");
+const mixButton = document.querySelector("#mix-button");
+const retryButton = document.querySelector("#retry-button");
 const nextButton = document.querySelector("#next-button");
-const replayButton = document.querySelector("#replay-button");
-const boardPanel = document.querySelector(".board-panel");
+const roundMenuButton = document.querySelector("#round-menu-button");
+const tutorialModal = document.querySelector("#tutorial-modal");
+const tutorialStartButton = document.querySelector("#tutorial-start-button");
+const modeButtons = [...document.querySelectorAll("[data-mode]")];
 
-const BEST_SCORE_PREFIX = "wangforge.best";
-const SOUND_PREF_KEY = "wangforge.soundEnabled";
-const THEME_PREF_KEY = "wangforge.theme";
+const BEST_SCORE_PREFIX = "chromaweld.bestScore";
+const SOUND_PREF_KEY = "chromaweld.soundEnabled";
+const THEME_PREF_KEY = "chromaweld.theme";
 
-const DIRECTIONS = [
-  { key: "n", opposite: "s", dx: 0, dy: -1, className: "top" },
-  { key: "e", opposite: "w", dx: 1, dy: 0, className: "right" },
-  { key: "s", opposite: "n", dx: 0, dy: 1, className: "bottom" },
-  { key: "w", opposite: "e", dx: -1, dy: 0, className: "left" },
-];
-
-const SIGNALS = [
-  { id: "red", label: "Ruby", value: "#ff4f7b" },
-  { id: "gold", label: "Gold", value: "#ffd166" },
-  { id: "cyan", label: "Cyan", value: "#17d6bd" },
-  { id: "blue", label: "Blue", value: "#4d96ff" },
-  { id: "green", label: "Green", value: "#9be15d" },
-  { id: "violet", label: "Violet", value: "#9d6cff" },
-];
-
-const SIGNAL_BY_ID = new Map(SIGNALS.map((signal) => [signal.id, signal]));
-
-const LEVEL_BLUEPRINTS = [
-  {
-    id: "tiny",
-    kicker: "Tiny",
-    name: "Tutorial",
-    contract: "Boundary",
+const MODE_CONFIGS = {
+  tutorial: {
+    id: "tutorial",
+    name: "Tiny Tutorial",
+    size: 3,
+    trayCount: 4,
+    seconds: 70,
+    coreCount: 2,
+    hintCost: 0,
+  },
+  sprint: {
+    id: "sprint",
+    name: "Sprint",
     size: 4,
-    signals: ["red", "cyan"],
-    horizontal: [1, 1, 0, 0],
-    vertical: [1, 0, 1, 1],
-    threadColors: ["cyan"],
-    motifSlack: 1,
-    repeatSlack: 0,
-    intro: "Fill the frame. Touching colors must match.",
+    trayCount: 5,
+    seconds: 65,
+    coreCount: 4,
+    hintCost: 10,
   },
-  {
-    id: "ribbon",
-    kicker: "Signal",
-    name: "Ribbon",
-    contract: "Thread",
-    size: 5,
-    signals: ["red", "gold", "cyan"],
-    horizontal: [1, 2, 1, 0],
-    vertical: [2, 1, 0, 1],
-    threadColors: ["gold", "cyan"],
-    motifSlack: 1,
-    repeatSlack: 0,
-    intro: "Connect both anchor pairs while keeping the pattern varied.",
-  },
-  {
-    id: "lock",
-    kicker: "Motif",
-    name: "Lock",
-    contract: "Aperiodic",
+  rush: {
+    id: "rush",
+    name: "Rush",
     size: 6,
-    signals: ["red", "gold", "cyan", "violet"],
-    horizontal: [1, 1, 2, 1],
-    vertical: [2, 3, 1, 0],
-    threadColors: ["red", "violet"],
-    motifSlack: 2,
-    repeatSlack: 1,
-    intro: "The edge rules are local, but repeated 2x2 patches count against you.",
+    trayCount: 6,
+    seconds: 100,
+    coreCount: 7,
+    hintCost: 15,
   },
-  {
-    id: "chorus",
-    kicker: "Edge",
-    name: "Chorus",
-    contract: "Weave",
-    size: 7,
-    signals: ["red", "gold", "cyan", "blue", "green"],
-    horizontal: [2, 1, 1, 0],
-    vertical: [1, 3, 2, 2],
-    threadColors: ["cyan", "blue", "green"],
-    motifSlack: 3,
-    repeatSlack: 1,
-    intro: "Several color threads can share one pattern if every local edge agrees.",
+  gauntlet: {
+    id: "gauntlet",
+    name: "Gauntlet",
+    size: 8,
+    trayCount: 7,
+    seconds: 130,
+    coreCount: 10,
+    hintCost: 20,
   },
+};
+
+const MODE_ORDER = ["tutorial", "sprint", "rush", "gauntlet"];
+
+const SIDE_DATA = [
+  { key: "n", opposite: "s", dx: 0, dy: -1 },
+  { key: "e", opposite: "w", dx: 1, dy: 0 },
+  { key: "s", opposite: "n", dx: 0, dy: 1 },
+  { key: "w", opposite: "e", dx: -1, dy: 0 },
 ];
 
-const LEVELS = LEVEL_BLUEPRINTS.map(prepareLevel);
+const PALETTE = [
+  { id: "hot", name: "Hot pink", value: "#ff4f7b" },
+  { id: "sun", name: "Sun", value: "#ffd166" },
+  { id: "teal", name: "Teal", value: "#17d6bd" },
+  { id: "blue", name: "Blue", value: "#4d96ff" },
+  { id: "violet", name: "Violet", value: "#9d6cff" },
+  { id: "lime", name: "Lime", value: "#9be15d" },
+];
 
 let state = createEmptyState();
-let currentTheme = readThemePreference();
 let soundEnabled = readSoundPreference();
+let currentTheme = readThemePreference();
+let pendingTutorialModeId = "tutorial";
 const audio = createAudioEngine();
 
 function createEmptyState() {
   return {
-    level: null,
+    mode: null,
     board: [],
-    stocks: new Map(),
+    cores: new Set(),
+    litCores: new Set(),
+    chargedCells: new Map(),
+    deck: [],
+    tray: [],
     selectedTileId: null,
-    history: [],
-    metrics: null,
-    hintIndex: null,
-    invalidIndex: null,
+    score: 0,
+    streak: 0,
+    bestScore: 0,
+    remainingSeconds: 0,
     message: "",
-    complete: false,
+    hint: null,
+    invalidIndex: null,
+    draggingTileId: null,
+    roundOver: false,
+    timerId: null,
+    placements: 0,
+    pulseCells: [],
   };
 }
 
-function prepareLevel(blueprint) {
-  const tileMap = new Map();
-  const solutionCells = [];
-  const size = blueprint.size;
+function readBestScore(modeId) {
+  try {
+    return (
+      Number.parseInt(
+        localStorage.getItem(`${BEST_SCORE_PREFIX}.${modeId}`) ?? "0",
+        10,
+      ) || 0
+    );
+  } catch {
+    return 0;
+  }
+}
+
+function writeBestScore(modeId, score) {
+  try {
+    localStorage.setItem(`${BEST_SCORE_PREFIX}.${modeId}`, String(score));
+  } catch {
+    // Private browsing modes may block storage; the round can continue.
+  }
+}
+
+function readSoundPreference() {
+  try {
+    return localStorage.getItem(SOUND_PREF_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function writeSoundPreference(isEnabled) {
+  try {
+    localStorage.setItem(SOUND_PREF_KEY, String(isEnabled));
+  } catch {
+    // The setting is optional; the audio toggle still works for this session.
+  }
+}
+
+function readThemePreference() {
+  try {
+    const savedTheme = localStorage.getItem(THEME_PREF_KEY);
+    return savedTheme === "light" ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+}
+
+function writeThemePreference(theme) {
+  try {
+    localStorage.setItem(THEME_PREF_KEY, theme);
+  } catch {
+    // Theme persistence is optional.
+  }
+}
+
+function createAudioEngine() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  const leadNotes = [261.63, 329.63, 392, 493.88, 587.33, 493.88, 392, 329.63];
+  const bassNotes = [130.81, 130.81, 196, 146.83];
+  let context = null;
+  let master = null;
+  let musicTimer = null;
+  let step = 0;
+
+  function ensureContext() {
+    if (!AudioContext) {
+      return null;
+    }
+
+    if (!context) {
+      context = new AudioContext();
+      master = context.createGain();
+      master.gain.value = 0.075;
+      master.connect(context.destination);
+    }
+
+    return context;
+  }
+
+  function pluck(frequency, start, duration, type, gainValue) {
+    const oscillator = context.createOscillator();
+    const filter = context.createBiquadFilter();
+    const gain = context.createGain();
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, start);
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(1500, start);
+    filter.frequency.exponentialRampToValueAtTime(420, start + duration);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+    oscillator.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+    oscillator.start(start);
+    oscillator.stop(start + duration + 0.025);
+  }
+
+  function playStep() {
+    if (!context || context.state !== "running") {
+      return;
+    }
+
+    const now = context.currentTime;
+    pluck(leadNotes[step % leadNotes.length], now, 0.15, "triangle", 0.18);
+
+    if (step % 4 === 0) {
+      pluck(bassNotes[Math.floor(step / 4) % bassNotes.length], now, 0.28, "sine", 0.22);
+    }
+
+    step += 1;
+  }
+
+  function effect(kind) {
+    if (!soundEnabled) {
+      return;
+    }
+
+    const liveContext = ensureContext();
+
+    if (!liveContext || liveContext.state !== "running") {
+      return;
+    }
+
+    const now = liveContext.currentTime;
+
+    if (kind === "error") {
+      pluck(110, now, 0.18, "sawtooth", 0.14);
+      return;
+    }
+
+    if (kind === "win") {
+      pluck(523.25, now, 0.2, "triangle", 0.22);
+      pluck(659.25, now + 0.08, 0.2, "triangle", 0.18);
+      pluck(783.99, now + 0.16, 0.28, "triangle", 0.16);
+      return;
+    }
+
+    if (kind === "lose") {
+      pluck(220, now, 0.22, "sine", 0.16);
+      pluck(164.81, now + 0.13, 0.32, "sine", 0.14);
+      return;
+    }
+
+    if (kind === "combo") {
+      pluck(659.25, now, 0.12, "triangle", 0.16);
+      pluck(987.77, now + 0.06, 0.14, "triangle", 0.12);
+      return;
+    }
+
+    if (kind === "hint") {
+      pluck(440, now, 0.08, "triangle", 0.11);
+      pluck(554.37, now + 0.05, 0.11, "triangle", 0.1);
+      return;
+    }
+
+    pluck(392, now, 0.1, "triangle", 0.11);
+  }
+
+  return {
+    async start() {
+      const liveContext = ensureContext();
+
+      if (!liveContext || musicTimer) {
+        return;
+      }
+
+      await liveContext.resume();
+      playStep();
+      musicTimer = window.setInterval(playStep, 230);
+    },
+    stop() {
+      if (musicTimer) {
+        window.clearInterval(musicTimer);
+      }
+
+      musicTimer = null;
+    },
+    effect,
+  };
+}
+
+function renderSoundButton() {
+  soundButton.textContent = soundEnabled ? "Sound On" : "Sound Off";
+  soundButton.setAttribute("aria-pressed", String(soundEnabled));
+  soundButton.classList.toggle("is-active", soundEnabled);
+}
+
+function renderThemeButton() {
+  const isDark = currentTheme === "dark";
+  themeButton.textContent = isDark ? "Dark" : "Light";
+  themeButton.setAttribute("aria-pressed", String(isDark));
+  themeButton.classList.toggle("is-active", isDark);
+}
+
+function setSoundEnabled(isEnabled) {
+  soundEnabled = isEnabled;
+  writeSoundPreference(soundEnabled);
+  renderSoundButton();
+
+  if (soundEnabled) {
+    audio.start();
+  } else {
+    audio.stop();
+  }
+}
+
+function setTheme(theme) {
+  currentTheme = theme === "light" ? "light" : "dark";
+  document.documentElement.dataset.theme = currentTheme;
+  writeThemePreference(currentTheme);
+  renderThemeButton();
+}
+
+function toggleTheme() {
+  setTheme(currentTheme === "dark" ? "light" : "dark");
+}
+
+function randomPaletteId() {
+  return PALETTE[Math.floor(Math.random() * PALETTE.length)].id;
+}
+
+function paletteValue(id) {
+  return PALETTE.find((color) => color.id === id)?.value ?? "#ffffff";
+}
+
+function paletteName(id) {
+  return PALETTE.find((color) => color.id === id)?.name ?? "color";
+}
+
+function boardSize() {
+  return state.mode?.size ?? MODE_CONFIGS.rush.size;
+}
+
+function indexFor(x, y, size = boardSize()) {
+  return y * size + x;
+}
+
+function coordinatesFor(index, size = boardSize()) {
+  return {
+    x: index % size,
+    y: Math.floor(index / size),
+  };
+}
+
+function formatTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = Math.max(0, seconds % 60);
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function shuffle(items) {
+  const next = [...items];
+
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+
+  return next;
+}
+
+function generateDeck(size) {
+  const tiles = [];
+  const solutionEdges = Array.from({ length: size }, () =>
+    Array.from({ length: size }, () => null),
+  );
 
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
-      const edges = {
-        n: formulaSignal(blueprint, "horizontal", x, y),
-        e: formulaSignal(blueprint, "vertical", x + 1, y),
-        s: formulaSignal(blueprint, "horizontal", x, y + 1),
-        w: formulaSignal(blueprint, "vertical", x, y),
+      const top = y === 0 ? randomPaletteId() : solutionEdges[y - 1][x].s;
+      const left = x === 0 ? randomPaletteId() : solutionEdges[y][x - 1].e;
+      const tile = {
+        id: `tile-${size}-${x}-${y}-${Math.random().toString(16).slice(2)}`,
+        edges: {
+          n: top,
+          e: randomPaletteId(),
+          s: randomPaletteId(),
+          w: left,
+        },
+        rotation: Math.floor(Math.random() * 4),
+        origin: { x, y },
       };
-      const signature = edgeSignature(edges);
-      let tile = tileMap.get(signature);
 
-      if (!tile) {
-        tile = {
-          id: `${blueprint.id}-${tileMap.size}`,
-          name: `Glyph ${tileMap.size + 1}`,
-          edges,
-          stock: 0,
-        };
-        tileMap.set(signature, tile);
-      }
-
-      tile.stock += 1;
-      solutionCells.push(tile.id);
+      solutionEdges[y][x] = tile.edges;
+      tiles.push(tile);
     }
   }
 
-  const tileTypes = [...tileMap.values()];
-  const tileById = new Map(tileTypes.map((tile) => [tile.id, tile]));
-  const boundary = makeBoundary(size, solutionCells, tileById);
-  const threads = makeThreadGoals(blueprint, solutionCells, tileById);
-  const solutionMotifs = collectMotifStats(solutionCells, size);
-  const targetMotifs = Math.max(
-    1,
-    Math.min(solutionMotifs.uniqueCount, solutionMotifs.uniqueCount - blueprint.motifSlack),
-  );
-  const repeatLimit = Math.max(0, solutionMotifs.repeatCount + blueprint.repeatSlack);
-
-  return {
-    ...blueprint,
-    tileTypes,
-    tileById,
-    boundary,
-    threads,
-    solutionCells,
-    targetMotifs,
-    repeatLimit,
-  };
+  return tiles;
 }
 
-function formulaSignal(level, axis, x, y) {
-  const [a, b, c, d] = level[axis];
-  const value = a * x + b * y + c * x * y + d;
-  return level.signals[mod(value, level.signals.length)];
-}
-
-function edgeSignature(edges) {
-  return `${edges.n}|${edges.e}|${edges.s}|${edges.w}`;
-}
-
-function mod(value, size) {
-  return ((value % size) + size) % size;
-}
-
-function makeBoundary(size, solutionCells, tileById) {
-  const boundary = { n: [], e: [], s: [], w: [] };
-
-  for (let x = 0; x < size; x += 1) {
-    boundary.n[x] = tileById.get(solutionCells[toIndex(x, 0, size)]).edges.n;
-    boundary.s[x] = tileById.get(solutionCells[toIndex(x, size - 1, size)]).edges.s;
+function drawTrayTiles() {
+  while (state.tray.length < state.mode.trayCount && state.deck.length > 0) {
+    state.tray.push(state.deck.shift());
   }
-
-  for (let y = 0; y < size; y += 1) {
-    boundary.w[y] = tileById.get(solutionCells[toIndex(0, y, size)]).edges.w;
-    boundary.e[y] = tileById.get(solutionCells[toIndex(size - 1, y, size)]).edges.e;
-  }
-
-  return boundary;
 }
 
-function makeThreadGoals(level, solutionCells, tileById) {
-  return level.threadColors.map((colorId) => {
-    const component = largestColorComponent(colorId, solutionCells, tileById, level.size);
-    const endpoints = farthestPair(component.length > 1 ? component : [0, solutionCells.length - 1], level.size);
-
-    return {
-      colorId,
-      from: endpoints[0],
-      to: endpoints[1],
-    };
-  });
-}
-
-function largestColorComponent(colorId, cells, tileById, size) {
-  const visited = new Set();
-  let best = [];
-
-  cells.forEach((tileId, index) => {
-    if (visited.has(index)) {
-      return;
-    }
-
-    const component = [];
-    const queue = [index];
-    visited.add(index);
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      component.push(current);
-
-      colorNeighbors(current, cells, tileById, size, colorId).forEach((neighbor) => {
-        if (!visited.has(neighbor)) {
-          visited.add(neighbor);
-          queue.push(neighbor);
-        }
-      });
-    }
-
-    if (component.length > best.length) {
-      best = component;
-    }
-  });
-
-  return best;
-}
-
-function farthestPair(indices, size) {
-  let bestPair = [indices[0], indices[indices.length - 1]];
-  let bestDistance = -1;
-
-  for (let a = 0; a < indices.length; a += 1) {
-    for (let b = a + 1; b < indices.length; b += 1) {
-      const start = fromIndex(indices[a], size);
-      const end = fromIndex(indices[b], size);
-      const distance = Math.abs(start.x - end.x) + Math.abs(start.y - end.y);
-
-      if (distance > bestDistance) {
-        bestDistance = distance;
-        bestPair = [indices[a], indices[b]];
-      }
-    }
-  }
-
-  return bestPair;
-}
-
-function colorNeighbors(index, cells, tileById, size, colorId) {
-  const tileId = cells[index];
-
-  if (!tileId) {
-    return [];
-  }
-
-  const tile = tileById.get(tileId);
-  const { x, y } = fromIndex(index, size);
-
-  return DIRECTIONS.reduce((neighbors, direction) => {
-    const nextX = x + direction.dx;
-    const nextY = y + direction.dy;
-
-    if (!inBounds(nextX, nextY, size)) {
-      return neighbors;
-    }
-
-    const nextIndex = toIndex(nextX, nextY, size);
-    const neighborId = cells[nextIndex];
-
-    if (!neighborId) {
-      return neighbors;
-    }
-
-    const neighborTile = tileById.get(neighborId);
-    if (
-      tile.edges[direction.key] === colorId &&
-      neighborTile.edges[direction.opposite] === colorId
-    ) {
-      neighbors.push(nextIndex);
-    }
-
-    return neighbors;
-  }, []);
-}
-
-function init() {
-  applyTheme(currentTheme);
-  updateSoundButton();
-  renderMenu();
-  wireEvents();
-}
-
-function wireEvents() {
-  levelList.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-level-id]");
-    if (!button) {
-      return;
-    }
-
-    startLevel(button.dataset.levelId);
-  });
-
-  paletteElement.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-tile-id]");
-    if (!button || button.disabled) {
-      return;
-    }
-
-    state.selectedTileId = button.dataset.tileId;
-    state.hintIndex = null;
-    state.message = "Choose a socket that respects every touching edge.";
-    audio.select();
-    renderAll();
-  });
-
-  boardElement.addEventListener("click", (event) => {
-    const cell = event.target.closest("[data-index]");
-    if (!cell || state.complete) {
-      return;
-    }
-
-    placeSelectedTile(Number(cell.dataset.index));
-  });
-
-  backButton.addEventListener("click", showMenu);
-  themeButton.addEventListener("click", toggleTheme);
-  soundButton.addEventListener("click", toggleSound);
-  undoButton.addEventListener("click", undoMove);
-  clearButton.addEventListener("click", resetCurrentLevel);
-  hintButton.addEventListener("click", showHint);
-  replayButton.addEventListener("click", resetCurrentLevel);
-  nextButton.addEventListener("click", startNextLevel);
-
-  document.addEventListener("keydown", (event) => {
-    if (gameScreen.hidden) {
-      return;
-    }
-
-    if (event.key === "Escape") {
-      showMenu();
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
-      event.preventDefault();
-      undoMove();
-    }
-
-    if (event.key.toLowerCase() === "h") {
-      showHint();
-    }
-  });
-}
-
-function renderMenu() {
-  levelList.replaceChildren();
-
-  LEVELS.forEach((level) => {
-    const button = document.createElement("button");
-    button.className = "level-button";
-    button.type = "button";
-    button.dataset.levelId = level.id;
-
-    const kicker = document.createElement("span");
-    kicker.textContent = level.kicker;
-
-    const best = readBestScore(level.id);
-    const score = document.createElement("small");
-    score.textContent = best > 0 ? `Best ${best}` : level.contract;
-
-    const title = document.createElement("strong");
-    title.textContent = level.name;
-
-    const status = document.createElement("em");
-    status.textContent = `${level.tileTypes.length} glyphs`;
-
-    button.append(kicker, score, title, status);
-    levelList.append(button);
-  });
-}
-
-function startLevel(levelId) {
-  const level = LEVELS.find((candidate) => candidate.id === levelId) ?? LEVELS[0];
-
-  state = createEmptyState();
-  state.level = level;
-  state.board = Array.from({ length: level.size * level.size }, () => null);
-  state.stocks = new Map(level.tileTypes.map((tile) => [tile.id, tile.stock]));
-  state.selectedTileId = firstAvailableTileId(level);
-  state.message = level.intro;
-  state.metrics = evaluatePattern();
-
-  levelKickerElement.textContent = level.contract;
-  levelTitleElement.textContent = level.name;
-  nextButton.textContent = isLastLevel(level.id) ? "Levels" : "Next Pattern";
-  boardElement.style.setProperty("--grid-size", level.size);
-  menuScreen.hidden = true;
-  gameScreen.hidden = false;
-  audio.start();
-  renderAll();
-}
-
-function showMenu() {
-  gameScreen.hidden = true;
-  menuScreen.hidden = false;
-  state = createEmptyState();
-  audio.stop();
-  renderMenu();
-}
-
-function firstAvailableTileId(level) {
-  return level.tileTypes.find((tile) => tile.stock > 0)?.id ?? null;
-}
-
-function placeSelectedTile(index) {
-  if (!state.selectedTileId) {
-    state.message = "Select a glyph from the alphabet first.";
-    renderAll();
-    return;
-  }
-
-  if (!canPlace(state.selectedTileId, index)) {
-    state.invalidIndex = index;
-    state.message = "That local rule breaks: match touching edges and the frame.";
-    audio.bad();
-    renderAll();
-    window.setTimeout(() => {
-      if (state.invalidIndex === index) {
-        state.invalidIndex = null;
-        renderBoard();
-      }
-    }, 220);
-    return;
-  }
-
-  const tileId = state.selectedTileId;
-  state.board[index] = tileId;
-  state.stocks.set(tileId, state.stocks.get(tileId) - 1);
-  state.history.push({ index, tileId });
-  state.invalidIndex = null;
-  state.hintIndex = null;
-  state.message = placementMessage(index, tileId);
-  audio.place(state.history.length);
-
-  if ((state.stocks.get(tileId) ?? 0) === 0) {
-    state.selectedTileId = nextUsefulTileId();
-  }
-
-  state.metrics = evaluatePattern();
-
-  if (state.metrics.complete) {
-    completeLevel();
-    return;
-  }
-
-  renderAll();
-}
-
-function placementMessage(index, tileId) {
-  const tile = state.level.tileById.get(tileId);
-  const touching = DIRECTIONS.filter((direction) => {
-    const neighbor = neighborIndex(index, direction, state.level.size);
-    return neighbor !== -1 && Boolean(state.board[neighbor]);
-  }).length;
-  const motifGain = countMotifsTouching(index);
-  const colors = new Set(Object.values(tile.edges)).size;
-
-  if (motifGain > 0) {
-    return `${motifGain} motif${motifGain === 1 ? "" : "s"} formed.`;
-  }
-
-  if (touching > 1) {
-    return `${touching} edges locked.`;
-  }
-
-  return `${colors}-color glyph placed.`;
-}
-
-function countMotifsTouching(index) {
-  const size = state.level.size;
-  const { x, y } = fromIndex(index, size);
-  let count = 0;
-
-  for (let patchY = y - 1; patchY <= y; patchY += 1) {
-    for (let patchX = x - 1; patchX <= x; patchX += 1) {
-      if (!inBounds(patchX, patchY, size - 1)) {
-        continue;
-      }
-
-      const patch = [
-        toIndex(patchX, patchY, size),
-        toIndex(patchX + 1, patchY, size),
-        toIndex(patchX, patchY + 1, size),
-        toIndex(patchX + 1, patchY + 1, size),
-      ];
-
-      if (patch.every((cellIndex) => state.board[cellIndex])) {
-        count += 1;
-      }
-    }
-  }
-
-  return count;
-}
-
-function canPlace(tileId, index) {
-  if (!state.level || state.board[index] || (state.stocks.get(tileId) ?? 0) <= 0) {
-    return false;
-  }
-
-  const tile = state.level.tileById.get(tileId);
-  const size = state.level.size;
-  const { x, y } = fromIndex(index, size);
-
-  return DIRECTIONS.every((direction) => {
-    const nextX = x + direction.dx;
-    const nextY = y + direction.dy;
-    const frameSignal = boundarySignal(direction.key, x, y);
-
-    if (frameSignal && tile.edges[direction.key] !== frameSignal) {
-      return false;
-    }
-
-    if (!inBounds(nextX, nextY, size)) {
-      return true;
-    }
-
-    const neighborId = state.board[toIndex(nextX, nextY, size)];
-
-    if (!neighborId) {
-      return true;
-    }
-
-    const neighbor = state.level.tileById.get(neighborId);
-    return tile.edges[direction.key] === neighbor.edges[direction.opposite];
-  });
-}
-
-function boundarySignal(directionKey, x, y) {
-  const { size, boundary } = state.level;
-
-  if (directionKey === "n" && y === 0) {
-    return boundary.n[x];
-  }
-
-  if (directionKey === "s" && y === size - 1) {
-    return boundary.s[x];
-  }
-
-  if (directionKey === "w" && x === 0) {
-    return boundary.w[y];
-  }
-
-  if (directionKey === "e" && x === size - 1) {
-    return boundary.e[y];
-  }
-
-  return null;
-}
-
-function undoMove() {
-  if (!state.level || state.history.length === 0 || state.complete) {
-    return;
-  }
-
-  const move = state.history.pop();
-  state.board[move.index] = null;
-  state.stocks.set(move.tileId, state.stocks.get(move.tileId) + 1);
-  state.selectedTileId = move.tileId;
-  state.hintIndex = null;
-  state.invalidIndex = null;
-  state.message = "Move lifted back into the alphabet.";
-  state.metrics = evaluatePattern();
-  audio.undo();
-  renderAll();
-}
-
-function resetCurrentLevel() {
-  if (!state.level) {
-    return;
-  }
-
-  startLevel(state.level.id);
-}
-
-function showHint() {
-  if (!state.level || state.complete) {
-    return;
-  }
-
-  const hint = findHint();
-
-  if (!hint) {
-    state.message = "No legal glyph fits from here. Undo a recent fork.";
-    audio.bad();
-    renderAll();
-    return;
-  }
-
-  state.selectedTileId = hint.tileId;
-  state.hintIndex = hint.index;
-  const tile = state.level.tileById.get(hint.tileId);
-  state.message = `${tile.name} has a legal socket highlighted.`;
-  audio.hint();
-  renderAll();
-}
-
-function findHint() {
-  const solutionMove = state.board.findIndex((tileId, index) => {
-    const solutionTileId = state.level.solutionCells[index];
-    return !tileId && (state.stocks.get(solutionTileId) ?? 0) > 0 && canPlace(solutionTileId, index);
-  });
-
-  if (solutionMove !== -1) {
-    return {
-      index: solutionMove,
-      tileId: state.level.solutionCells[solutionMove],
+function rotatedEdges(tile, rotation = tile?.rotation ?? 0) {
+  let edges = { ...tile.edges };
+
+  for (let turns = 0; turns < rotation; turns += 1) {
+    edges = {
+      n: edges.w,
+      e: edges.n,
+      s: edges.e,
+      w: edges.s,
     };
   }
 
-  for (const tile of state.level.tileTypes) {
-    if ((state.stocks.get(tile.id) ?? 0) <= 0) {
-      continue;
-    }
-
-    const index = state.board.findIndex((tileId, candidate) => !tileId && canPlace(tile.id, candidate));
-
-    if (index !== -1) {
-      return { index, tileId: tile.id };
-    }
-  }
-
-  return null;
+  return edges;
 }
 
-function nextUsefulTileId() {
-  const legalTile = state.level.tileTypes.find((tile) => {
-    if ((state.stocks.get(tile.id) ?? 0) <= 0) {
-      return false;
-    }
+function neighborAt(index, direction) {
+  const size = boardSize();
+  const { x, y } = coordinatesFor(index, size);
+  const nextX = x + direction.dx;
+  const nextY = y + direction.dy;
 
-    return state.board.some((tileId, index) => !tileId && canPlace(tile.id, index));
-  });
-
-  if (legalTile) {
-    return legalTile.id;
-  }
-
-  return state.level.tileTypes.find((tile) => (state.stocks.get(tile.id) ?? 0) > 0)?.id ?? null;
-}
-
-function evaluatePattern() {
-  if (!state.level) {
+  if (nextX < 0 || nextX >= size || nextY < 0 || nextY >= size) {
     return null;
   }
 
-  const filled = state.board.filter(Boolean).length;
-  const motifs = collectMotifStats(state.board, state.level.size);
-  const threads = state.level.threads.map((thread) => ({
-    ...thread,
-    met: areAnchorsConnected(thread),
-  }));
-  const threadMet = threads.filter((thread) => thread.met).length;
-  const complete =
-    filled === state.board.length &&
-    threadMet === threads.length &&
-    motifs.uniqueCount >= state.level.targetMotifs &&
-    motifs.repeatCount <= state.level.repeatLimit;
-
+  const neighborIndex = indexFor(nextX, nextY, size);
   return {
-    filled,
-    total: state.board.length,
-    motifs,
-    threads,
-    threadMet,
-    complete,
-    score: scorePattern(motifs, threadMet),
+    index: neighborIndex,
+    tile: state.board[neighborIndex],
   };
 }
 
-function scorePattern(motifs, threadMet) {
-  return Math.max(0, motifs.uniqueCount * 100 + threadMet * 150 - motifs.repeatCount * 25);
-}
-
-function collectMotifStats(cells, size) {
-  const signatures = new Map();
-  let completePatches = 0;
-
-  for (let y = 0; y < size - 1; y += 1) {
-    for (let x = 0; x < size - 1; x += 1) {
-      const indices = [
-        toIndex(x, y, size),
-        toIndex(x + 1, y, size),
-        toIndex(x, y + 1, size),
-        toIndex(x + 1, y + 1, size),
-      ];
-
-      if (!indices.every((index) => cells[index])) {
-        continue;
-      }
-
-      completePatches += 1;
-      const signature = indices.map((index) => cells[index]).join("/");
-
-      if (!signatures.has(signature)) {
-        signatures.set(signature, []);
-      }
-
-      signatures.get(signature).push(indices);
-    }
+function validatePlacement(tile, index, rotation = tile?.rotation ?? 0) {
+  if (!tile) {
+    return { ok: false, matches: 0, reason: "Pick a tray tile first." };
   }
 
-  const duplicateCells = new Set();
-  let repeatCount = 0;
-
-  signatures.forEach((patches) => {
-    if (patches.length < 2) {
-      return;
-    }
-
-    repeatCount += patches.length - 1;
-    patches.forEach((patch) => patch.forEach((index) => duplicateCells.add(index)));
-  });
-
-  return {
-    completePatches,
-    uniqueCount: signatures.size,
-    repeatCount,
-    duplicateCells,
-  };
-}
-
-function areAnchorsConnected(thread) {
-  if (!state.board[thread.from] || !state.board[thread.to]) {
-    return false;
+  if (state.board[index]) {
+    return { ok: false, matches: 0, reason: "That space is already welded." };
   }
 
-  const visited = new Set([thread.from]);
-  const queue = [thread.from];
+  const edges = rotatedEdges(tile, rotation);
+  let matches = 0;
+  let placedNeighbors = 0;
 
-  while (queue.length > 0) {
-    const current = queue.shift();
+  for (const direction of SIDE_DATA) {
+    const neighbor = neighborAt(index, direction);
 
-    if (current === thread.to) {
-      return true;
+    if (!neighbor?.tile) {
+      continue;
     }
 
-    colorNeighbors(current, state.board, state.level.tileById, state.level.size, thread.colorId).forEach(
-      (neighbor) => {
-        if (!visited.has(neighbor)) {
-          visited.add(neighbor);
-          queue.push(neighbor);
+    placedNeighbors += 1;
+    const neighborEdges = rotatedEdges(neighbor.tile);
+
+    if (edges[direction.key] !== neighborEdges[direction.opposite]) {
+      const needed = paletteName(
+        neighborEdges[direction.opposite],
+      ).toLowerCase();
+      return {
+        ok: false,
+        matches,
+        reason: `That edge needs ${needed}. -4 sec.`,
+      };
+    }
+
+    matches += 1;
+  }
+
+  if (placedNeighbors === 0) {
+    return {
+      ok: false,
+      matches: 0,
+      reason: "Weld next to an existing tile. -4 sec.",
+    };
+  }
+
+  return { ok: true, matches };
+}
+
+function findBestMove(tiles = state.tray) {
+  const moves = [];
+
+  for (const tile of tiles) {
+    for (let rotation = 0; rotation < 4; rotation += 1) {
+      for (let index = 0; index < state.board.length; index += 1) {
+        const result = validatePlacement(tile, index, rotation);
+
+        if (result.ok) {
+          const coreBonus =
+            state.cores.has(index) && !state.litCores.has(index) ? 20 : 0;
+          const fluxBonus = state.chargedCells.has(index) ? 8 : 0;
+          moves.push({
+            tileId: tile.id,
+            index,
+            rotation,
+            matches: result.matches,
+            priority: result.matches * 10 + coreBonus + fluxBonus,
+          });
         }
-      },
+      }
+    }
+  }
+
+  moves.sort((a, b) => b.priority - a.priority || b.matches - a.matches);
+  return moves[0] ?? null;
+}
+
+function ensureTrayHasMove() {
+  if (state.tray.length === 0 || findBestMove()) {
+    return;
+  }
+
+  const deckMove = findBestMove(state.deck);
+
+  if (!deckMove) {
+    return;
+  }
+
+  const deckIndex = state.deck.findIndex((tile) => tile.id === deckMove.tileId);
+  const [incomingTile] = state.deck.splice(deckIndex, 1);
+  const outgoingTile = state.tray.pop();
+  incomingTile.rotation = deckMove.rotation;
+
+  if (outgoingTile) {
+    state.deck.push(outgoingTile);
+    state.deck = shuffle(state.deck);
+  }
+
+  state.tray.unshift(incomingTile);
+  state.selectedTileId = incomingTile.id;
+}
+
+function selectedTile() {
+  return state.tray.find((tile) => tile.id === state.selectedTileId) ?? null;
+}
+
+function createCoreIndexes(size, count, seedIndex, modeId) {
+  if (modeId === "tutorial") {
+    return new Set(
+      [indexFor(0, 1, size), indexFor(2, 1, size)].slice(0, count),
     );
   }
 
-  return false;
-}
+  const seed = coordinatesFor(seedIndex, size);
+  const candidates = [];
 
-function completeLevel() {
-  state.complete = true;
-  state.message = "The contract accepts this pattern.";
-  const previousBest = readBestScore(state.level.id);
+  for (let index = 0; index < size * size; index += 1) {
+    if (index === seedIndex) {
+      continue;
+    }
 
-  if (state.metrics.score > previousBest) {
-    writeBestScore(state.level.id, state.metrics.score);
+    const { x, y } = coordinatesFor(index, size);
+    const distance = Math.abs(seed.x - x) + Math.abs(seed.y - y);
+
+    candidates.push({ index, distance });
   }
 
-  audio.win();
-  renderAll();
+  return new Set(
+    shuffle(candidates)
+      .sort((a, b) => b.distance - a.distance)
+      .slice(0, count)
+      .map((candidate) => candidate.index),
+  );
 }
 
-function renderAll() {
-  renderBoard();
-  renderPalette();
-  renderStats();
-  renderGoals();
-  renderWinPanel();
+function chargedCellCount() {
+  return [...state.chargedCells.keys()].filter((index) => !state.board[index])
+    .length;
 }
 
-function renderBoard() {
-  if (!state.level) {
-    boardElement.replaceChildren();
-    return;
+function isCellCharged(index) {
+  return state.chargedCells.has(index) && !state.board[index];
+}
+
+function ageChargedCells(placedIndex) {
+  const nextCharges = new Map();
+
+  for (const [index, turns] of state.chargedCells.entries()) {
+    if (index === placedIndex || state.board[index] || turns <= 1) {
+      continue;
+    }
+
+    nextCharges.set(index, turns - 1);
   }
 
-  const { size } = state.level;
-  const duplicateCells = state.metrics?.motifs.duplicateCells ?? new Set();
-  const anchorMap = makeAnchorMap();
-  boardPanel.classList.toggle("is-complete", state.complete);
-  boardElement.replaceChildren();
-
-  state.board.forEach((tileId, index) => {
-    const cell = document.createElement("button");
-    cell.className = "cell";
-    cell.type = "button";
-    cell.dataset.index = index;
-    cell.setAttribute("role", "gridcell");
-    cell.setAttribute("aria-label", cellLabel(index));
-
-    if (tileId) {
-      cell.classList.add("is-filled");
-      cell.append(createTileFace(state.level.tileById.get(tileId)));
-    } else if (state.selectedTileId && canPlace(state.selectedTileId, index)) {
-      cell.classList.add("is-legal");
-    }
-
-    if (state.hintIndex === index) {
-      cell.classList.add("is-hint");
-    }
-
-    if (state.invalidIndex === index) {
-      cell.classList.add("is-illegal");
-    }
-
-    if (duplicateCells.has(index)) {
-      cell.classList.add("is-duplicate");
-    }
-
-    const anchor = anchorMap.get(index);
-    if (anchor) {
-      cell.classList.add("is-anchor");
-      cell.style.setProperty("--anchor-color", signalColor(anchor.colorId));
-      cell.title = `${signalLabel(anchor.colorId)} thread anchor`;
-    }
-
-    appendBoundaryMarks(cell, index, size);
-    boardElement.append(cell);
-  });
+  state.chargedCells = nextCharges;
 }
 
-function cellLabel(index) {
-  const { size } = state.level;
-  const { x, y } = fromIndex(index, size);
-  const tileId = state.board[index];
-
-  if (!tileId) {
-    return `Empty socket row ${y + 1}, column ${x + 1}`;
+function chargeNearbyCells(index, matches) {
+  if (matches < 2) {
+    state.pulseCells = [];
+    return [];
   }
 
-  return `${state.level.tileById.get(tileId).name} row ${y + 1}, column ${x + 1}`;
-}
+  const size = boardSize();
+  const radius = matches >= 3 ? 2 : 1;
+  const origin = coordinatesFor(index, size);
+  const charged = [];
 
-function makeAnchorMap() {
-  const anchors = new Map();
+  for (let y = origin.y - radius; y <= origin.y + radius; y += 1) {
+    for (let x = origin.x - radius; x <= origin.x + radius; x += 1) {
+      if (x < 0 || x >= size || y < 0 || y >= size) {
+        continue;
+      }
 
-  state.level.threads.forEach((thread) => {
-    anchors.set(thread.from, thread);
-    anchors.set(thread.to, thread);
-  });
+      const distance = Math.abs(origin.x - x) + Math.abs(origin.y - y);
 
-  return anchors;
-}
+      if (distance === 0 || distance > radius) {
+        continue;
+      }
 
-function appendBoundaryMarks(cell, index, size) {
-  const { x, y } = fromIndex(index, size);
-  const marks = [
-    { className: "top", signal: y === 0 ? state.level.boundary.n[x] : null },
-    { className: "right", signal: x === size - 1 ? state.level.boundary.e[y] : null },
-    { className: "bottom", signal: y === size - 1 ? state.level.boundary.s[x] : null },
-    { className: "left", signal: x === 0 ? state.level.boundary.w[y] : null },
-  ];
+      const chargedIndex = indexFor(x, y, size);
 
-  marks.forEach((mark) => {
-    if (!mark.signal) {
+      if (state.board[chargedIndex]) {
+        continue;
+      }
+
+      state.chargedCells.set(chargedIndex, 3);
+      charged.push(chargedIndex);
+    }
+  }
+
+  state.pulseCells = charged;
+  window.setTimeout(() => {
+    if (state.pulseCells.length === 0) {
       return;
     }
 
-    const element = document.createElement("span");
-    element.className = `boundary-mark ${mark.className}`;
-    element.style.setProperty("--need-color", signalColor(mark.signal));
-    cell.append(element);
-  });
+    state.pulseCells = [];
+    render();
+  }, 460);
+  return charged;
 }
 
-function renderPalette() {
-  if (!state.level) {
-    paletteElement.replaceChildren();
-    return;
+function lightCoreAt(index) {
+  if (!state.cores.has(index) || state.litCores.has(index)) {
+    return false;
   }
 
-  paletteElement.replaceChildren();
-
-  state.level.tileTypes.forEach((tile) => {
-    const count = state.stocks.get(tile.id) ?? 0;
-    const button = document.createElement("button");
-    button.className = "tile-option";
-    button.type = "button";
-    button.dataset.tileId = tile.id;
-    button.disabled = count <= 0 || state.complete;
-    button.classList.toggle("is-selected", state.selectedTileId === tile.id);
-    button.append(createTileFace(tile, true), tileLabel(tile, count));
-    paletteElement.append(button);
-  });
+  state.litCores.add(index);
+  return true;
 }
 
-function tileLabel(tile, count) {
-  const label = document.createElement("span");
-  label.className = "tile-label";
-
-  const name = document.createElement("strong");
-  name.textContent = tile.name;
-
-  const stock = document.createElement("span");
-  stock.textContent = `${count} left`;
-
-  label.append(name, stock);
-  return label;
-}
-
-function createTileFace(tile, mini = false) {
+function createTileFace(tile) {
+  const edges = rotatedEdges(tile);
   const face = document.createElement("span");
-  face.className = mini ? "tile-face is-mini" : "tile-face";
-  face.style.setProperty("--edge-n", signalColor(tile.edges.n));
-  face.style.setProperty("--edge-e", signalColor(tile.edges.e));
-  face.style.setProperty("--edge-s", signalColor(tile.edges.s));
-  face.style.setProperty("--edge-w", signalColor(tile.edges.w));
+  face.className = "tile-face";
+  face.setAttribute("aria-hidden", "true");
+  face.style.setProperty("--edge-n", paletteValue(edges.n));
+  face.style.setProperty("--edge-e", paletteValue(edges.e));
+  face.style.setProperty("--edge-s", paletteValue(edges.s));
+  face.style.setProperty("--edge-w", paletteValue(edges.w));
 
-  DIRECTIONS.forEach((direction) => {
+  for (const side of ["top", "right", "bottom", "left"]) {
     const edge = document.createElement("span");
-    edge.className = `tile-edge ${direction.className}`;
+    edge.className = `tile-edge ${side}`;
     face.append(edge);
-  });
+  }
 
   const core = document.createElement("span");
   core.className = "tile-core";
@@ -961,295 +690,554 @@ function createTileFace(tile, mini = false) {
   return face;
 }
 
-function renderStats() {
-  if (!state.metrics) {
-    return;
-  }
-
-  const remaining = [...state.stocks.values()].reduce((sum, count) => sum + count, 0);
-  filledCountElement.textContent = `${state.metrics.filled}/${state.metrics.total}`;
-  threadCountElement.textContent = `${state.metrics.threadMet}/${state.level.threads.length}`;
-  motifCountElement.textContent = `${state.metrics.motifs.uniqueCount}/${state.level.targetMotifs}`;
-  repeatCountElement.textContent = `${state.metrics.motifs.repeatCount}/${state.level.repeatLimit}`;
-  stockCountElement.textContent = `${remaining} left`;
-  messageElement.textContent = state.message;
-  undoButton.disabled = state.history.length === 0 || state.complete;
-  clearButton.disabled = state.history.length === 0 || state.complete;
-  hintButton.disabled = state.complete;
+function describeTile(tile) {
+  const edges = rotatedEdges(tile);
+  return `Tile with ${paletteName(edges.n)} top, ${paletteName(edges.e)} right, ${paletteName(edges.s)} bottom, and ${paletteName(edges.w)} left`;
 }
 
-function renderGoals() {
-  if (!state.metrics) {
-    goalsElement.replaceChildren();
-    return;
-  }
-
-  const goals = [
-    {
-      label: "Fill every socket inside the color frame",
-      met: state.metrics.filled === state.metrics.total,
-      colorId: "gold",
-    },
-    ...state.metrics.threads.map((thread) => ({
-      label: `Connect the ${signalLabel(thread.colorId)} anchors`,
-      met: thread.met,
-      colorId: thread.colorId,
-    })),
-    {
-      label: `Forge ${state.level.targetMotifs}+ distinct 2x2 motifs`,
-      met: state.metrics.motifs.uniqueCount >= state.level.targetMotifs,
-      colorId: "violet",
-    },
-    {
-      label: `Keep repeated motifs at ${state.level.repeatLimit} or less`,
-      met: state.metrics.motifs.repeatCount <= state.level.repeatLimit,
-      colorId: "red",
-    },
-  ];
-
-  goalsElement.replaceChildren();
-
-  goals.forEach((goal) => {
-    const item = document.createElement("div");
-    item.className = "goal-item";
-    item.classList.toggle("is-met", goal.met);
-    item.style.setProperty("--goal-color", signalColor(goal.colorId));
-    item.textContent = goal.met ? `Done: ${goal.label}` : goal.label;
-    goalsElement.append(item);
-  });
-}
-
-function renderWinPanel() {
-  winPanel.hidden = !state.complete;
-
-  if (!state.complete || !state.metrics) {
-    return;
-  }
-
-  winTitle.textContent = "Pattern accepted.";
-  winSummary.textContent = `${state.metrics.motifs.uniqueCount} motifs, ${state.metrics.threadMet} threads, score ${state.metrics.score}.`;
-}
-
-function signalColor(signalId) {
-  return SIGNAL_BY_ID.get(signalId)?.value ?? "#ffffff";
-}
-
-function signalLabel(signalId) {
-  return SIGNAL_BY_ID.get(signalId)?.label ?? signalId;
-}
-
-function neighborIndex(index, direction, size) {
-  const { x, y } = fromIndex(index, size);
-  const nextX = x + direction.dx;
-  const nextY = y + direction.dy;
-
-  if (!inBounds(nextX, nextY, size)) {
-    return -1;
-  }
-
-  return toIndex(nextX, nextY, size);
-}
-
-function toIndex(x, y, size) {
-  return y * size + x;
-}
-
-function fromIndex(index, size) {
-  return {
-    x: index % size,
-    y: Math.floor(index / size),
-  };
-}
-
-function inBounds(x, y, size) {
-  return x >= 0 && y >= 0 && x < size && y < size;
-}
-
-function startNextLevel() {
-  const currentIndex = LEVELS.findIndex((level) => level.id === state.level?.id);
-
-  if (currentIndex === -1 || currentIndex === LEVELS.length - 1) {
-    showMenu();
-    return;
-  }
-
-  startLevel(LEVELS[currentIndex + 1].id);
-}
-
-function isLastLevel(levelId) {
-  return LEVELS.findIndex((level) => level.id === levelId) === LEVELS.length - 1;
-}
-
-function toggleTheme() {
-  currentTheme = currentTheme === "dark" ? "light" : "dark";
-  writeStorage(THEME_PREF_KEY, currentTheme);
-  applyTheme(currentTheme);
-}
-
-function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  themeButton.textContent = theme === "dark" ? "Dark" : "Light";
-  themeButton.setAttribute("aria-pressed", String(theme === "dark"));
-}
-
-function toggleSound() {
-  soundEnabled = !soundEnabled;
-  writeStorage(SOUND_PREF_KEY, String(soundEnabled));
-  updateSoundButton();
-
-  if (soundEnabled) {
-    audio.start();
-    audio.select();
-  } else {
-    audio.stop();
+function renderMenuBests() {
+  for (const element of document.querySelectorAll("[data-best-for]")) {
+    const modeId = element.dataset.bestFor;
+    element.textContent = `Best ${readBestScore(modeId)}`;
   }
 }
 
-function updateSoundButton() {
-  soundButton.textContent = soundEnabled ? "Sound On" : "Sound Off";
-  soundButton.setAttribute("aria-pressed", String(soundEnabled));
-}
+function renderBoard() {
+  boardElement.innerHTML = "";
+  boardElement.style.setProperty("--grid-size", String(boardSize()));
+  const activeTile = selectedTile();
 
-function readThemePreference() {
-  const saved = readStorage(THEME_PREF_KEY);
-  return saved === "light" ? "light" : "dark";
-}
+  for (let index = 0; index < state.board.length; index += 1) {
+    const placedTile = state.board[index];
+    const isCore = state.cores.has(index);
+    const isLitCore = state.litCores.has(index);
+    const placement =
+      activeTile && !state.roundOver ? validatePlacement(activeTile, index) : null;
+    const { x, y } = coordinatesFor(index);
+    const cell = document.createElement("button");
+    cell.className = [
+      "cell",
+      placedTile ? "is-filled" : "",
+      placedTile?.locked ? "is-anchor" : "",
+      isCore ? "is-core" : "",
+      isLitCore ? "is-lit-core" : "",
+      isCellCharged(index) ? "is-charged" : "",
+      state.pulseCells.includes(index) ? "is-pulse" : "",
+      placement?.ok ? "is-placeable" : "",
+      state.hint?.index === index ? "is-hint" : "",
+      state.invalidIndex === index ? "is-invalid" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    cell.type = "button";
+    cell.setAttribute("role", "gridcell");
+    cell.setAttribute(
+      "aria-label",
+      placedTile
+        ? `Row ${y + 1}, column ${x + 1}. ${isLitCore ? "Lit core. " : ""}${describeTile(placedTile)}`
+        : `Empty row ${y + 1}, column ${x + 1}. ${isCore ? "Core. " : ""}${isCellCharged(index) ? "Charged. " : ""}`,
+    );
+    cell.addEventListener("click", () => placeSelectedTile(index));
+    cell.addEventListener("dragover", (event) => {
+      const tile = selectedTile();
 
-function readSoundPreference() {
-  return readStorage(SOUND_PREF_KEY) !== "false";
-}
+      if (!state.roundOver && validatePlacement(tile, index).ok) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      }
+    });
+    cell.addEventListener("drop", (event) => {
+      event.preventDefault();
 
-function readBestScore(levelId) {
-  return Number(readStorage(`${BEST_SCORE_PREFIX}.${levelId}`) ?? 0);
-}
-
-function writeBestScore(levelId, score) {
-  writeStorage(`${BEST_SCORE_PREFIX}.${levelId}`, String(score));
-}
-
-function readStorage(key) {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(key, value) {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // Private browsing can reject storage. The game still runs without saves.
-  }
-}
-
-function createAudioEngine() {
-  let context = null;
-  let master = null;
-  let interval = null;
-  let step = 0;
-  const notes = [196, 247, 294, 330, 392, 330, 294, 247];
-
-  function ensureContext() {
-    const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
-
-    if (context || !AudioContextConstructor) {
-      return context;
-    }
-
-    context = new AudioContextConstructor();
-    master = context.createGain();
-    master.gain.value = 0.08;
-    master.connect(context.destination);
-    return context;
-  }
-
-  function start() {
-    if (!soundEnabled) {
-      return;
-    }
-
-    const ctx = ensureContext();
-
-    if (!ctx) {
-      return;
-    }
-
-    ctx.resume();
-
-    if (interval) {
-      return;
-    }
-
-    interval = window.setInterval(() => {
-      if (!soundEnabled || !context) {
+      if (state.roundOver) {
         return;
       }
 
-      pluck(notes[step % notes.length], 0.035, 0.18, "sine");
-      if (step % 4 === 0) {
-        pluck(notes[(step + 3) % notes.length] / 2, 0.025, 0.32, "triangle");
+      const tileId = event.dataTransfer.getData("text/plain");
+
+      if (tileId) {
+        state.selectedTileId = tileId;
       }
-      step += 1;
-    }, 520);
-  }
 
-  function stop() {
-    if (interval) {
-      window.clearInterval(interval);
-      interval = null;
-    }
-  }
+      placeSelectedTile(index);
+    });
 
-  function pluck(frequency, gainValue, duration, type = "triangle") {
-    if (!soundEnabled) {
-      return;
+    if (placedTile) {
+      cell.append(createTileFace(placedTile));
     }
 
-    const ctx = ensureContext();
-
-    if (!ctx || !master) {
-      return;
-    }
-
-    const now = ctx.currentTime;
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(frequency, now);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(gainValue, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    oscillator.connect(gain);
-    gain.connect(master);
-    oscillator.start(now);
-    oscillator.stop(now + duration + 0.03);
+    boardElement.append(cell);
   }
-
-  return {
-    start,
-    stop,
-    select() {
-      pluck(440, 0.035, 0.08, "square");
-    },
-    place(depth) {
-      pluck(330 + (depth % 8) * 22, 0.05, 0.12);
-    },
-    bad() {
-      pluck(110, 0.07, 0.18, "sawtooth");
-    },
-    undo() {
-      pluck(220, 0.035, 0.1);
-    },
-    hint() {
-      pluck(660, 0.04, 0.16, "sine");
-    },
-    win() {
-      [392, 494, 587, 784].forEach((frequency, index) => {
-        window.setTimeout(() => pluck(frequency, 0.06, 0.22), index * 90);
-      });
-    },
-  };
 }
 
-init();
+function renderTray() {
+  trayElement.innerHTML = "";
+
+  if (state.tray.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "tray-empty";
+    empty.textContent = "Tray clear";
+    trayElement.append(empty);
+    return;
+  }
+
+  for (const trayTile of state.tray) {
+    const tile = document.createElement("button");
+    tile.className = [
+      "tile",
+      trayTile.id === state.selectedTileId ? "is-selected" : "",
+      trayTile.id === state.hint?.tileId ? "is-hint" : "",
+      trayTile.id === state.draggingTileId ? "is-dragging" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    tile.type = "button";
+    tile.draggable = !state.roundOver;
+    tile.dataset.tileId = trayTile.id;
+    tile.setAttribute("aria-pressed", String(trayTile.id === state.selectedTileId));
+    tile.setAttribute("aria-label", describeTile(trayTile));
+    tile.addEventListener("click", () => {
+      if (state.roundOver) {
+        return;
+      }
+
+      state.selectedTileId = trayTile.id;
+      state.hint = null;
+      state.message = describeTile(trayTile);
+      render();
+    });
+    tile.addEventListener("dragstart", (event) => {
+      if (state.roundOver) {
+        event.preventDefault();
+        return;
+      }
+
+      state.selectedTileId = trayTile.id;
+      state.draggingTileId = trayTile.id;
+      state.hint = null;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", trayTile.id);
+    });
+    tile.addEventListener("dragend", () => {
+      state.draggingTileId = null;
+      render();
+    });
+    tile.append(createTileFace(trayTile));
+    trayElement.append(tile);
+  }
+}
+
+function renderStats() {
+  const remainingTiles = state.deck.length + state.tray.length;
+  const progress = Math.min(
+    100,
+    (state.litCores.size / state.mode.coreCount) * 100,
+  );
+
+  modeLabelElement.textContent =
+    state.mode.id === "tutorial"
+      ? state.mode.name
+      : `${state.mode.name} ${state.mode.size}x${state.mode.size}`;
+  scoreElement.textContent = String(state.score);
+  coresLitElement.textContent = `${state.litCores.size}/${state.mode.coreCount}`;
+  fluxCountElement.textContent = String(chargedCellCount());
+  streakElement.textContent = String(state.streak);
+  comboLabelElement.textContent = `Chain x${state.streak}`;
+  tilesLeftElement.textContent = String(remainingTiles);
+  bestScoreElement.textContent = String(state.bestScore);
+  timeLeftElement.textContent = formatTime(state.remainingSeconds);
+  timeCardElement.classList.toggle("is-low", state.remainingSeconds <= 10);
+  goalMeterElement.style.width = `${progress}%`;
+  messageElement.textContent = state.message;
+}
+
+function renderRoundPanel() {
+  roundPanel.hidden = !state.roundOver;
+  boardPanelElement.classList.toggle("is-round-over", state.roundOver);
+  nextButton.hidden = !state.roundOver || !hasNextMode();
+}
+
+function renderControls() {
+  const hasTile = Boolean(selectedTile());
+  rotateButton.disabled = !hasTile || state.roundOver;
+  hintButton.disabled = state.tray.length === 0 || state.roundOver;
+  mixButton.disabled =
+    state.roundOver || (state.tray.length === 0 && state.deck.length === 0);
+}
+
+function render() {
+  if (!state.mode) {
+    renderMenuBests();
+    return;
+  }
+
+  renderBoard();
+  renderTray();
+  renderStats();
+  renderRoundPanel();
+  renderControls();
+}
+
+function showMenu() {
+  stopTimer();
+  state = createEmptyState();
+  menuScreen.hidden = false;
+  gameScreen.hidden = true;
+  menuButton.hidden = true;
+  tutorialModal.hidden = true;
+  renderMenuBests();
+}
+
+function showTutorialPopup(modeId) {
+  pendingTutorialModeId = modeId;
+  tutorialModal.hidden = false;
+  tutorialStartButton.focus();
+}
+
+function startRound(modeId) {
+  const mode = MODE_CONFIGS[modeId] ?? MODE_CONFIGS.sprint;
+  const deck = generateDeck(mode.size);
+  const center = Math.floor(mode.size / 2);
+  const seedIndex = indexFor(center, center, mode.size);
+  const seedTileIndex = deck.findIndex(
+    (tile) => tile.origin.x === center && tile.origin.y === center,
+  );
+  const [seedTile] = deck.splice(seedTileIndex, 1);
+  seedTile.locked = true;
+  seedTile.rotation = 0;
+
+  stopTimer();
+  state = createEmptyState();
+  state.mode = mode;
+  state.board = Array.from({ length: mode.size * mode.size }, () => null);
+  state.board[seedIndex] = seedTile;
+  state.cores = createCoreIndexes(mode.size, mode.coreCount, seedIndex, mode.id);
+  state.placements = 1;
+  state.deck = shuffle(deck);
+  state.remainingSeconds = mode.seconds;
+  state.bestScore = readBestScore(mode.id);
+  drawTrayTiles();
+  ensureTrayHasMove();
+  state.selectedTileId = state.tray[0]?.id ?? null;
+  state.message =
+    mode.id === "tutorial"
+      ? "Light the cores."
+      : "Light every core before the clock ends.";
+
+  menuScreen.hidden = true;
+  gameScreen.hidden = false;
+  menuButton.hidden = false;
+  render();
+  startTimer();
+
+  if (soundEnabled) {
+    audio.start();
+  }
+}
+
+function startTimer() {
+  stopTimer();
+  state.timerId = window.setInterval(() => {
+    if (state.roundOver) {
+      stopTimer();
+      return;
+    }
+
+    state.remainingSeconds = Math.max(0, state.remainingSeconds - 1);
+
+    if (state.remainingSeconds <= 0) {
+      endRound(false, "Time froze the board.");
+      return;
+    }
+
+    renderStats();
+  }, 1000);
+}
+
+function stopTimer() {
+  if (state.timerId) {
+    window.clearInterval(state.timerId);
+  }
+
+  state.timerId = null;
+}
+
+function updateBestScore() {
+  if (state.score <= state.bestScore) {
+    return;
+  }
+
+  state.bestScore = state.score;
+  writeBestScore(state.mode.id, state.bestScore);
+  renderMenuBests();
+}
+
+function scorePlacement(matches, options = {}) {
+  const { wasCharged = false, coreLit = false, chargedCount = 0 } = options;
+  const base = 45;
+  const matchBonus = matches * 35;
+  const chainBonus = state.streak * 14;
+  const fluxBonus = wasCharged ? 90 : 0;
+  const coreBonus = coreLit ? 180 : 0;
+  const surgeBonus = chargedCount * 6;
+  const gain = base + matchBonus + chainBonus + fluxBonus + coreBonus + surgeBonus;
+  const timeGain = Math.min(
+    12,
+    1 +
+      matches +
+      Math.floor(state.streak / 3) +
+      (wasCharged ? 4 : 0) +
+      (coreLit ? 5 : 0) +
+      (matches >= 3 ? 2 : 0),
+  );
+  state.score += gain;
+  state.remainingSeconds += timeGain;
+  return { gain, timeGain };
+}
+
+function placeSelectedTile(index) {
+  if (state.roundOver) {
+    return;
+  }
+
+  const tile = selectedTile();
+  const result = validatePlacement(tile, index);
+
+  if (!result.ok) {
+    state.streak = 0;
+    state.remainingSeconds = Math.max(0, state.remainingSeconds - 4);
+    state.message = result.reason;
+    state.invalidIndex = index;
+    audio.effect("error");
+    render();
+    window.setTimeout(() => {
+      state.invalidIndex = null;
+      render();
+    }, 220);
+
+    if (state.remainingSeconds <= 0) {
+      endRound(false, "A bad weld spent the last seconds.");
+    }
+
+    return;
+  }
+
+  const wasCharged = isCellCharged(index);
+  state.board[index] = tile;
+  state.tray = state.tray.filter((candidate) => candidate.id !== tile.id);
+  state.streak += 1;
+  state.placements += 1;
+
+  ageChargedCells(index);
+  const coreLit = lightCoreAt(index);
+  const chargedCells = chargeNearbyCells(index, result.matches);
+  const { gain, timeGain } = scorePlacement(result.matches, {
+    wasCharged,
+    coreLit,
+    chargedCount: chargedCells.length,
+  });
+  audio.effect(result.matches >= 3 || coreLit || wasCharged ? "combo" : "place");
+  state.hint = null;
+  drawTrayTiles();
+  ensureTrayHasMove();
+  state.selectedTileId = state.tray[0]?.id ?? null;
+  updateBestScore();
+
+  const remaining = state.deck.length + state.tray.length;
+  const bestMove = findBestMove();
+
+  if (state.litCores.size >= state.mode.coreCount) {
+    endRound(true, `All cores lit with ${formatTime(state.remainingSeconds)} left.`);
+    return;
+  }
+
+  if (remaining === 0) {
+    endRound(false, "The board filled before every core lit.");
+    return;
+  }
+
+  if (!bestMove) {
+    state.message = "No legal weld is visible. Remix quickly.";
+  } else if (coreLit) {
+    state.message = `Core lit +${gain}, +${timeGain} sec.`;
+  } else if (wasCharged) {
+    state.message = `Flux weld +${gain}, +${timeGain} sec.`;
+  } else if (result.matches >= 3) {
+    state.message = `Burst weld charged ${chargedCells.length} sockets. +${gain}`;
+  } else if (result.matches === 2) {
+    state.message = `Pulse weld charged ${chargedCells.length} sockets. +${gain}`;
+  } else {
+    state.message = `Weld +${gain}, +${timeGain} sec.`;
+  }
+
+  render();
+}
+
+function rotateSelectedTile() {
+  const tile = selectedTile();
+
+  if (!tile || state.roundOver) {
+    return;
+  }
+
+  tile.rotation = (tile.rotation + 1) % 4;
+  state.hint = null;
+  state.message = "Rotated.";
+  audio.effect("place");
+  render();
+}
+
+function showHint() {
+  if (state.roundOver) {
+    return;
+  }
+
+  const move = findBestMove();
+
+  if (!move) {
+    state.message = "No legal weld in this tray.";
+    state.hint = null;
+    render();
+    return;
+  }
+
+  state.selectedTileId = move.tileId;
+  const hintedTile = selectedTile();
+
+  if (hintedTile) {
+    hintedTile.rotation = move.rotation;
+  }
+
+  if (state.mode.hintCost > 0) {
+    state.score = Math.max(0, state.score - state.mode.hintCost);
+  }
+
+  state.hint = move;
+  audio.effect("hint");
+  state.message =
+    state.mode.hintCost > 0
+      ? `Hint found. -${state.mode.hintCost} points.`
+      : "Hint found.";
+  render();
+}
+
+function mixTray() {
+  if (state.roundOver || state.tray.length === 0) {
+    return;
+  }
+
+  state.deck = shuffle([...state.deck, ...state.tray]);
+  state.tray = [];
+  drawTrayTiles();
+  ensureTrayHasMove();
+  state.selectedTileId = state.tray[0]?.id ?? null;
+  state.hint = null;
+  state.streak = 0;
+  state.score = Math.max(0, state.score - 15);
+  state.remainingSeconds = Math.max(0, state.remainingSeconds - 3);
+  state.message = "Tray remixed. -3 sec.";
+  audio.effect("hint");
+  updateBestScore();
+
+  if (state.remainingSeconds <= 0) {
+    endRound(false, "The remix spent the last seconds.");
+    return;
+  }
+
+  render();
+}
+
+function endRound(didWin, summary) {
+  stopTimer();
+  state.roundOver = true;
+  updateBestScore();
+  roundKicker.textContent = didWin ? "Cores lit" : "Round over";
+  roundTitle.textContent = didWin ? "Core chain live" : "Core chain lost";
+  roundSummary.textContent = `${summary} Cores ${state.litCores.size}/${state.mode.coreCount}. Score ${state.score}. Best ${state.bestScore}.`;
+  state.message = didWin
+    ? "Pick the next size or replay for a better chain."
+    : "Retry or drop to a smaller grid.";
+  audio.effect(didWin ? "win" : "lose");
+  render();
+}
+
+function hasNextMode() {
+  if (!state.mode) {
+    return false;
+  }
+
+  return MODE_ORDER.indexOf(state.mode.id) < MODE_ORDER.length - 1;
+}
+
+function nextMode() {
+  if (!hasNextMode()) {
+    return state.mode.id;
+  }
+
+  return MODE_ORDER[MODE_ORDER.indexOf(state.mode.id) + 1];
+}
+
+function handleKeydown(event) {
+  if (!state.mode || state.roundOver) {
+    return;
+  }
+
+  const key = event.key.toLowerCase();
+  const number = Number.parseInt(key, 10);
+
+  if (number >= 1 && number <= state.tray.length) {
+    state.selectedTileId = state.tray[number - 1].id;
+    state.hint = null;
+    render();
+    return;
+  }
+
+  if (key === "r") {
+    rotateSelectedTile();
+  }
+
+  if (key === "h") {
+    showHint();
+  }
+
+  if (key === "m") {
+    mixTray();
+  }
+}
+
+for (const button of modeButtons) {
+  button.addEventListener("click", () => {
+    if (button.dataset.mode === "tutorial") {
+      showTutorialPopup(button.dataset.mode);
+      return;
+    }
+
+    startRound(button.dataset.mode);
+  });
+}
+
+soundButton.addEventListener("click", () => setSoundEnabled(!soundEnabled));
+themeButton.addEventListener("click", toggleTheme);
+menuButton.addEventListener("click", showMenu);
+roundMenuButton.addEventListener("click", showMenu);
+retryButton.addEventListener("click", () => startRound(state.mode?.id ?? "sprint"));
+nextButton.addEventListener("click", () => startRound(nextMode()));
+tutorialStartButton.addEventListener("click", () => {
+  tutorialModal.hidden = true;
+  startRound(pendingTutorialModeId);
+});
+rotateButton.addEventListener("click", rotateSelectedTile);
+hintButton.addEventListener("click", showHint);
+mixButton.addEventListener("click", mixTray);
+document.addEventListener("keydown", handleKeydown);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    audio.stop();
+  } else if (soundEnabled) {
+    audio.start();
+  }
+});
+
+setTheme(currentTheme);
+renderSoundButton();
+showMenu();

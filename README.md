@@ -1,9 +1,8 @@
-# Wang Pattern Forge
+# Chromaweld Rush
 
-Wang Pattern Forge is a browser-only puzzle game about fixed-orientation Wang
-tiles. The player builds colorful patterns from a limited tile alphabet while
-respecting local edge rules, boundary colors, signal-thread anchors, and motif
-variety contracts.
+Chromaweld Rush is a browser-only arcade puzzle game inspired by Wang tiles.
+The player places colorful square tiles whose edge colors must match their
+neighbors while lighting weld cores against the clock.
 
 ## Run
 
@@ -11,21 +10,15 @@ Open `index.html` in a browser. No install or build step is required.
 
 ## Play
 
-- Choose a pattern from the menu.
-- Select a glyph from the tile alphabet.
-- Place it in any legal socket. Touching edges and the outer frame must match.
-- Use every tile in the limited stock.
-- Connect matching-color anchor pairs through shared color edges.
-- Create enough distinct 2x2 motifs while keeping repeated motifs under the
-  contract limit.
-- Hint highlights one legal socket for the selected solution path.
+- Choose a board size from the menu.
+- Select a tray tile, rotate it as needed, then place it next to the seed tile.
+- Every touching edge must match color.
+- Light every core before time runs out.
+- Strong welds charge nearby sockets for score and time boosts.
+- Bigger edge matches and longer chains score more.
+- Use hint when you want the board to show a strong legal move.
 - Soundtrack and effects are generated in the browser with Web Audio.
 - Dark theme is the default, with a light theme toggle in the header.
-
-## Archive
-
-The first arcade version, Chromaweld Rush, is preserved at
-`legacy/chromaweld-rush/index.html`.
 
 ## Deployment
 
