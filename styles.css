@@ -41,7 +41,7 @@ body {
       rgb(255 255 255 / 5%) 0 1px,
       transparent 1px 28px
     ),
-    radial-gradient(circle at 50% 10%, #1e2540 0, var(--bg) 42rem);
+    linear-gradient(180deg, #11182a 0%, var(--bg) 58%, #0b1018 100%);
 }
 
 button {
