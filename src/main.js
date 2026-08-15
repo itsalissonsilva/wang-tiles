@@ -44,6 +44,7 @@ function createInitialState() {
     message: "",
     hint: null,
     invalidIndex: null,
+    draggingTileId: null,
   };
 }
 
@@ -213,10 +214,10 @@ function validatePlacement(tile, index, rotation = tile.rotation) {
   return { ok: true, matches };
 }
 
-function findBestMove() {
+function findBestMove(tiles = state.tray) {
   const moves = [];
 
-  for (const tile of state.tray) {
+  for (const tile of tiles) {
     for (let rotation = 0; rotation < 4; rotation += 1) {
       for (let index = 0; index < state.board.length; index += 1) {
         const result = validatePlacement(tile, index, rotation);
@@ -235,6 +236,30 @@ function findBestMove() {
 
   moves.sort((a, b) => b.matches - a.matches);
   return moves[0] ?? null;
+}
+
+function ensureTrayHasMove() {
+  if (state.tray.length === 0 || findBestMove()) {
+    return;
+  }
+
+  const deckMove = findBestMove(state.deck);
+
+  if (!deckMove) {
+    return;
+  }
+
+  const deckIndex = state.deck.findIndex((tile) => tile.id === deckMove.tileId);
+  const [incomingTile] = state.deck.splice(deckIndex, 1);
+  const outgoingTile = state.tray.pop();
+
+  if (outgoingTile) {
+    state.deck.push(outgoingTile);
+    state.deck = shuffle(state.deck);
+  }
+
+  state.tray.unshift(incomingTile);
+  state.selectedTileId = incomingTile.id;
 }
 
 function selectedTile() {
@@ -297,6 +322,24 @@ function renderBoardShell() {
         : `Empty row ${y + 1}, column ${x + 1}`,
     );
     cell.addEventListener("click", () => placeSelectedTile(index));
+    cell.addEventListener("dragover", (event) => {
+      const tile = selectedTile();
+
+      if (tile && validatePlacement(tile, index).ok) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      }
+    });
+    cell.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const tileId = event.dataTransfer.getData("text/plain");
+
+      if (tileId) {
+        state.selectedTileId = tileId;
+      }
+
+      placeSelectedTile(index);
+    });
 
     if (placedTile) {
       cell.append(createTileFace(placedTile));
@@ -309,20 +352,44 @@ function renderBoardShell() {
 function renderTray() {
   trayElement.innerHTML = "";
 
+  if (state.tray.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "tray-empty";
+    empty.textContent = "Tray clear";
+    trayElement.append(empty);
+    return;
+  }
+
   for (const trayTile of state.tray) {
     const tile = document.createElement("button");
     tile.className = [
       "tile",
       trayTile.id === state.selectedTileId ? "is-selected" : "",
       trayTile.id === state.hint?.tileId ? "is-hint" : "",
+      trayTile.id === state.draggingTileId ? "is-dragging" : "",
     ]
       .filter(Boolean)
       .join(" ");
     tile.type = "button";
+    tile.draggable = true;
+    tile.dataset.tileId = trayTile.id;
+    tile.setAttribute("aria-pressed", String(trayTile.id === state.selectedTileId));
     tile.setAttribute("aria-label", describeTile(trayTile));
     tile.addEventListener("click", () => {
       state.selectedTileId = trayTile.id;
       state.hint = null;
+      state.message = describeTile(trayTile);
+      render();
+    });
+    tile.addEventListener("dragstart", (event) => {
+      state.selectedTileId = trayTile.id;
+      state.draggingTileId = trayTile.id;
+      state.hint = null;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", trayTile.id);
+    });
+    tile.addEventListener("dragend", () => {
+      state.draggingTileId = null;
       render();
     });
     tile.append(createTileFace(trayTile));
@@ -361,6 +428,7 @@ function startNewGame() {
   state.board[seedIndex] = seedTile;
   state.deck = shuffle(deck);
   drawTrayTiles();
+  ensureTrayHasMove();
   state.selectedTileId = state.tray[0]?.id ?? null;
   state.message = "Build outward by matching every touching edge.";
   render();
@@ -404,6 +472,7 @@ function placeSelectedTile(index) {
   state.score += 20 + result.matches * 25 + state.streak * 5;
   state.hint = null;
   drawTrayTiles();
+  ensureTrayHasMove();
   state.selectedTileId = state.tray[0]?.id ?? null;
   updateBestScore();
 
@@ -466,6 +535,7 @@ function mixTray() {
   state.deck = shuffle([...state.deck, ...state.tray]);
   state.tray = [];
   drawTrayTiles();
+  ensureTrayHasMove();
   state.selectedTileId = state.tray[0]?.id ?? null;
   state.hint = null;
   state.streak = 0;
@@ -481,11 +551,29 @@ hintButton.addEventListener("click", showHint);
 mixButton.addEventListener("click", mixTray);
 
 document.addEventListener("keydown", (event) => {
-  if (event.key.toLowerCase() === "r") {
+  const key = event.key.toLowerCase();
+  const number = Number.parseInt(key, 10);
+
+  if (number >= 1 && number <= state.tray.length) {
+    state.selectedTileId = state.tray[number - 1].id;
+    state.hint = null;
+    render();
+    return;
+  }
+
+  if (key === "r") {
     rotateSelectedTile();
   }
 
-  if (event.key.toLowerCase() === "n") {
+  if (key === "h") {
+    showHint();
+  }
+
+  if (key === "m") {
+    mixTray();
+  }
+
+  if (key === "n") {
     startNewGame();
   }
 });

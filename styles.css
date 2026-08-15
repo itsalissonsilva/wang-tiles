@@ -87,6 +87,9 @@ h2 {
   font-weight: 800;
   letter-spacing: 0;
   cursor: pointer;
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .primary-button {
@@ -94,6 +97,11 @@ h2 {
   color: white;
   background: var(--ink);
   box-shadow: 5px 5px 0 var(--sun);
+}
+
+.primary-button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 var(--sun);
 }
 
 .primary-button:focus-visible,
@@ -176,6 +184,10 @@ h2 {
   cursor: pointer;
 }
 
+.cell:hover {
+  transform: translateY(-1px);
+}
+
 .cell::after {
   content: "";
   position: absolute;
@@ -236,7 +248,14 @@ h2 {
   background: white;
 }
 
-.tool-button:hover {
+.tool-button:disabled {
+  color: rgb(104 113 127 / 58%);
+  background: rgb(255 255 255 / 54%);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.tool-button:not(:disabled):hover {
   transform: translateY(-1px);
 }
 
@@ -250,6 +269,10 @@ h2 {
   aspect-ratio: 1;
   cursor: grab;
   padding: 0;
+}
+
+.tile:hover {
+  transform: translateY(-1px);
 }
 
 .tile:active {
@@ -266,6 +289,10 @@ h2 {
   box-shadow:
     0 0 0 4px rgb(255 209 102 / 42%),
     0 10px 22px rgb(23 32 42 / 16%);
+}
+
+.tile.is-dragging {
+  opacity: 0.5;
 }
 
 .tile-face {
@@ -334,6 +361,17 @@ h2 {
   line-height: 1.35;
 }
 
+.tray-empty {
+  grid-column: 1 / -1;
+  min-height: 90px;
+  border: 2px dashed rgb(32 44 58 / 24%);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-weight: 800;
+}
+
 @keyframes shake {
   0%,
   100% {
@@ -380,5 +418,9 @@ h2 {
 
   .status-panel {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tray {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
