@@ -36,16 +36,52 @@
             <span class="metric-label">Tiles Left</span>
             <strong id="tiles-left">0</strong>
           </div>
+          <div>
+            <span class="metric-label">Best</span>
+            <strong id="best-score">0</strong>
+          </div>
         </aside>
 
         <section class="board-panel" aria-label="Tile board">
           <div class="board-frame">
             <div id="board" class="board" role="grid" aria-label="Puzzle grid"></div>
+            <p id="message" class="message" role="status" aria-live="polite"></p>
           </div>
         </section>
 
         <aside class="panel tray-panel">
-          <h2>Tile Tray</h2>
+          <div class="tray-header">
+            <h2>Tile Tray</h2>
+            <div class="tool-row">
+              <button
+                class="tool-button"
+                id="rotate-button"
+                type="button"
+                aria-label="Rotate selected tile"
+                title="Rotate selected tile"
+              >
+                R
+              </button>
+              <button
+                class="tool-button"
+                id="hint-button"
+                type="button"
+                aria-label="Show a good match"
+                title="Show a good match"
+              >
+                ?
+              </button>
+              <button
+                class="tool-button"
+                id="mix-button"
+                type="button"
+                aria-label="Remix tile tray"
+                title="Remix tile tray"
+              >
+                Mix
+              </button>
+            </div>
+          </div>
           <div id="tray" class="tray" aria-label="Available tiles"></div>
         </aside>
       </section>
