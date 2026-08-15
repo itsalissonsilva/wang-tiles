@@ -377,7 +377,7 @@ function drawTrayTiles() {
   }
 }
 
-function rotatedEdges(tile, rotation = tile.rotation) {
+function rotatedEdges(tile, rotation = tile?.rotation ?? 0) {
   let edges = { ...tile.edges };
 
   for (let turns = 0; turns < rotation; turns += 1) {
@@ -409,7 +409,7 @@ function neighborAt(index, direction) {
   };
 }
 
-function validatePlacement(tile, index, rotation = tile.rotation) {
+function validatePlacement(tile, index, rotation = tile?.rotation ?? 0) {
   if (!tile) {
     return { ok: false, matches: 0, reason: "Pick a tray tile first." };
   }
