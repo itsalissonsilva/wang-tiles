@@ -233,20 +233,25 @@ h2 {
 
 .mode-list {
   display: grid;
-  grid-template-columns: minmax(200px, 280px);
-  gap: 7px;
+  grid-template-columns: minmax(200px, 300px);
+  gap: 6px;
   justify-content: center;
-  width: min(280px, 100%);
+  width: min(300px, 100%);
 }
 
 .mode-card {
   display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "label detail"
+    "title best";
   align-content: center;
-  gap: 3px;
-  min-height: 64px;
-  padding: 8px 10px;
+  align-items: center;
+  gap: 1px 12px;
+  min-height: 56px;
+  padding: 7px 10px;
   color: var(--ink);
-  text-align: center;
+  text-align: left;
 }
 
 .mode-card:nth-child(1) {
@@ -284,22 +289,37 @@ h2 {
 .mode-card span,
 .round-panel span {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-style: normal;
   font-weight: 850;
   text-transform: uppercase;
 }
 
+.mode-card span {
+  grid-area: label;
+}
+
 .mode-card strong {
-  font-size: clamp(1.1rem, 4vw, 1.65rem);
+  grid-area: title;
+  font-size: clamp(1rem, 3vw, 1.28rem);
   line-height: 0.95;
 }
 
 .mode-card small,
 .mode-card em {
   color: var(--soft);
-  font-size: 0.76rem;
+  font-size: 0.68rem;
   font-style: normal;
+}
+
+.mode-card small {
+  grid-area: detail;
+  text-align: right;
+}
+
+.mode-card em {
+  grid-area: best;
+  text-align: right;
 }
 
 .game-layout {
@@ -334,8 +354,8 @@ h2 {
 }
 
 .board-panel.is-round-over .board-frame {
-  opacity: 0.34;
-  filter: saturate(0.7);
+  opacity: 0.16;
+  filter: blur(1px) saturate(0.58);
   pointer-events: none;
 }
 
@@ -466,7 +486,7 @@ h2 {
 .round-panel {
   position: absolute;
   inset: 50% auto auto 50%;
-  z-index: 8;
+  z-index: 12;
   width: min(360px, calc(100% - 28px));
   padding: 18px;
   transform: translate(-50%, -50%);
@@ -526,12 +546,17 @@ h2 {
   gap: 14px;
 }
 
-.tray-panel .settings-row {
+.tray-column {
+  display: grid;
+  gap: 10px;
+}
+
+.tray-column > .settings-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.tray-panel .secondary-button {
+.tray-column > .settings-row .secondary-button {
   min-width: 0;
   padding-inline: 8px;
 }
