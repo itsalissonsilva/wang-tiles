@@ -1,6 +1,5 @@
 const menuScreen = document.querySelector("#menu-screen");
 const gameScreen = document.querySelector("#game-screen");
-const previewGrid = document.querySelector("#preview-grid");
 const boardElement = document.querySelector("#board");
 const trayElement = document.querySelector("#tray");
 const scoreElement = document.querySelector("#score");
@@ -39,7 +38,7 @@ const THEME_PREF_KEY = "chromaweld.theme";
 const MODE_CONFIGS = {
   tutorial: {
     id: "tutorial",
-    name: "Tutorial",
+    name: "Tiny Tutorial",
     size: 3,
     trayCount: 4,
     seconds: 70,
@@ -695,38 +694,6 @@ function describeTile(tile) {
   return `Tile with ${paletteName(edges.n)} top, ${paletteName(edges.e)} right, ${paletteName(edges.s)} bottom, and ${paletteName(edges.w)} left`;
 }
 
-function renderPreviewGrid() {
-  const previewTiles = [
-    ["hot", "sun", "teal", "blue"],
-    ["sun", "violet", "blue", "sun"],
-    ["lime", "blue", "hot", "violet"],
-    ["teal", "hot", "violet", "lime"],
-    ["blue", "lime", "sun", "hot"],
-  ];
-
-  previewGrid.innerHTML = "";
-
-  for (let index = 0; index < 9; index += 1) {
-    const cell = document.createElement("div");
-    cell.className = "preview-cell";
-
-    if ([0, 1, 3, 4, 7].includes(index)) {
-      const tile = {
-        edges: {
-          n: previewTiles[index % previewTiles.length][0],
-          e: previewTiles[index % previewTiles.length][1],
-          s: previewTiles[index % previewTiles.length][2],
-          w: previewTiles[index % previewTiles.length][3],
-        },
-        rotation: index % 4,
-      };
-      cell.append(createTileFace(tile));
-    }
-
-    previewGrid.append(cell);
-  }
-}
-
 function renderMenuBests() {
   for (const element of document.querySelectorAll("[data-best-for]")) {
     const modeId = element.dataset.bestFor;
@@ -1269,7 +1236,6 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-renderPreviewGrid();
 setTheme(currentTheme);
 renderSoundButton();
 showMenu();
