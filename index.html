@@ -5,90 +5,207 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="A colorful browser puzzle game inspired by Wang tiles."
+      content="A fast browser puzzle game inspired by Wang tiles."
     />
-    <title>Chromaweld</title>
+    <title>Chromaweld Rush</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app-shell">
-      <section class="topbar" aria-label="Game controls">
+      <header class="topbar">
         <div>
-          <p class="eyebrow">Wang tile puzzle</p>
-          <h1>Chromaweld</h1>
+          <p class="eyebrow">Wang tile arcade</p>
+          <h1>Chromaweld Rush</h1>
         </div>
-        <button
-          class="primary-button"
-          id="new-game-button"
-          type="button"
-          title="New board"
-        >
-          New
-        </button>
+        <div class="topbar-actions">
+          <button
+            class="secondary-button"
+            id="menu-button"
+            type="button"
+            hidden
+          >
+            Menu
+          </button>
+        </div>
+      </header>
+
+      <section id="menu-screen" class="menu-screen" aria-label="Level select">
+        <div class="menu-copy">
+          <p class="eyebrow">Level select</p>
+          <h2>Beat the clock by welding matching color edges.</h2>
+          <p class="menu-text">
+            The small board teaches the rhythm. Larger boards demand faster
+            reads, longer chains, and sharper tray choices.
+          </p>
+          <div
+            class="preview-grid"
+            id="preview-grid"
+            aria-label="Tutorial preview"
+          ></div>
+          <div class="tutorial-note">
+            <strong>Tutorial:</strong> rotate tiles until every touching edge
+            matches. Multi-edge welds add time and make the score jump.
+          </div>
+        </div>
+
+        <div class="mode-list" aria-label="Choose a board size">
+          <button class="mode-card" type="button" data-mode="tutorial">
+            <span>Tutorial</span>
+            <strong>3 x 3</strong>
+            <small>90 sec / 240 target</small>
+            <em data-best-for="tutorial">Best 0</em>
+          </button>
+          <button class="mode-card" type="button" data-mode="sprint">
+            <span>Sprint</span>
+            <strong>4 x 4</strong>
+            <small>75 sec / 550 target</small>
+            <em data-best-for="sprint">Best 0</em>
+          </button>
+          <button class="mode-card" type="button" data-mode="rush">
+            <span>Rush</span>
+            <strong>6 x 6</strong>
+            <small>115 sec / 1500 target</small>
+            <em data-best-for="rush">Best 0</em>
+          </button>
+          <button class="mode-card" type="button" data-mode="gauntlet">
+            <span>Gauntlet</span>
+            <strong>8 x 8</strong>
+            <small>150 sec / 3100 target</small>
+            <em data-best-for="gauntlet">Best 0</em>
+          </button>
+        </div>
       </section>
 
-      <section class="game-layout" aria-label="Chromaweld game">
-        <aside class="panel status-panel">
+      <section
+        id="game-screen"
+        class="game-screen"
+        aria-label="Chromaweld Rush game"
+        hidden
+      >
+        <section class="command-bar" aria-label="Round controls">
           <div>
-            <span class="metric-label">Score</span>
-            <strong id="score">0</strong>
+            <span class="metric-label">Mode</span>
+            <strong id="mode-label">Sprint</strong>
           </div>
-          <div>
-            <span class="metric-label">Streak</span>
-            <strong id="streak">0</strong>
-          </div>
-          <div>
-            <span class="metric-label">Tiles Left</span>
-            <strong id="tiles-left">0</strong>
-          </div>
-          <div>
-            <span class="metric-label">Best</span>
-            <strong id="best-score">0</strong>
-          </div>
-        </aside>
-
-        <section class="board-panel" aria-label="Tile board">
-          <div class="board-frame">
-            <div id="board" class="board" role="grid" aria-label="Puzzle grid"></div>
-            <p id="message" class="message" role="status" aria-live="polite"></p>
+          <div class="tool-row">
+            <button
+              class="tool-button"
+              id="rotate-button"
+              type="button"
+              aria-label="Rotate selected tile"
+              title="Rotate selected tile"
+            >
+              Rot
+            </button>
+            <button
+              class="tool-button"
+              id="hint-button"
+              type="button"
+              aria-label="Show a strong match"
+              title="Show a strong match"
+            >
+              Hint
+            </button>
+            <button
+              class="tool-button"
+              id="mix-button"
+              type="button"
+              aria-label="Remix tile tray"
+              title="Remix tile tray"
+            >
+              Mix
+            </button>
+            <button
+              class="tool-button"
+              id="retry-button"
+              type="button"
+              aria-label="Restart this round"
+              title="Restart this round"
+            >
+              Retry
+            </button>
           </div>
         </section>
 
-        <aside class="panel tray-panel">
-          <div class="tray-header">
-            <h2>Tile Tray</h2>
-            <div class="tool-row">
-              <button
-                class="tool-button"
-                id="rotate-button"
-                type="button"
-                aria-label="Rotate selected tile"
-                title="Rotate selected tile"
-              >
-                Rot
-              </button>
-              <button
-                class="tool-button"
-                id="hint-button"
-                type="button"
-                aria-label="Show a good match"
-                title="Show a good match"
-              >
-                Hint
-              </button>
-              <button
-                class="tool-button"
-                id="mix-button"
-                type="button"
-                aria-label="Remix tile tray"
-                title="Remix tile tray"
-              >
-                Mix
-              </button>
+        <section class="game-layout">
+          <aside class="panel status-panel" aria-label="Round status">
+            <div class="urgent-metric" id="time-card">
+              <span class="metric-label">Time</span>
+              <strong id="time-left">0:00</strong>
             </div>
-          </div>
-          <div id="tray" class="tray" aria-label="Available tiles"></div>
-        </aside>
+            <div>
+              <span class="metric-label">Score</span>
+              <strong id="score">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">Target</span>
+              <strong id="target-score">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">Chain</span>
+              <strong id="streak">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">Tiles</span>
+              <strong id="tiles-left">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">Best</span>
+              <strong id="best-score">0</strong>
+            </div>
+          </aside>
+
+          <section class="board-panel" aria-label="Tile board">
+            <div class="board-frame">
+              <div
+                id="board"
+                class="board"
+                role="grid"
+                aria-label="Puzzle grid"
+              ></div>
+              <div class="goal-track" aria-label="Goal progress">
+                <span id="goal-meter"></span>
+              </div>
+              <p
+                id="message"
+                class="message"
+                role="status"
+                aria-live="polite"
+              ></p>
+            </div>
+            <div
+              class="round-panel"
+              id="round-panel"
+              role="status"
+              aria-live="assertive"
+              hidden
+            >
+              <span id="round-kicker">Round over</span>
+              <strong id="round-title">Time</strong>
+              <p id="round-summary"></p>
+              <div class="round-actions">
+                <button class="primary-button" id="next-button" type="button">
+                  Next
+                </button>
+                <button
+                  class="secondary-button"
+                  id="round-menu-button"
+                  type="button"
+                >
+                  Menu
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <aside class="panel tray-panel" aria-label="Available tiles">
+            <div class="tray-header">
+              <h2>Tile Tray</h2>
+              <span id="combo-label" class="combo-label">Chain x0</span>
+            </div>
+            <div id="tray" class="tray"></div>
+          </aside>
+        </section>
       </section>
     </main>
 
