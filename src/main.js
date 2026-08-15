@@ -7,7 +7,8 @@ const scoreElement = document.querySelector("#score");
 const streakElement = document.querySelector("#streak");
 const tilesLeftElement = document.querySelector("#tiles-left");
 const bestScoreElement = document.querySelector("#best-score");
-const targetScoreElement = document.querySelector("#target-score");
+const coresLitElement = document.querySelector("#cores-lit");
+const fluxCountElement = document.querySelector("#flux-count");
 const timeLeftElement = document.querySelector("#time-left");
 const timeCardElement = document.querySelector("#time-card");
 const goalMeterElement = document.querySelector("#goal-meter");
@@ -19,6 +20,7 @@ const roundKicker = document.querySelector("#round-kicker");
 const roundTitle = document.querySelector("#round-title");
 const roundSummary = document.querySelector("#round-summary");
 const soundButton = document.querySelector("#sound-button");
+const themeButton = document.querySelector("#theme-button");
 const menuButton = document.querySelector("#menu-button");
 const rotateButton = document.querySelector("#rotate-button");
 const hintButton = document.querySelector("#hint-button");
@@ -26,10 +28,13 @@ const mixButton = document.querySelector("#mix-button");
 const retryButton = document.querySelector("#retry-button");
 const nextButton = document.querySelector("#next-button");
 const roundMenuButton = document.querySelector("#round-menu-button");
+const tutorialModal = document.querySelector("#tutorial-modal");
+const tutorialStartButton = document.querySelector("#tutorial-start-button");
 const modeButtons = [...document.querySelectorAll("[data-mode]")];
 
 const BEST_SCORE_PREFIX = "chromaweld.bestScore";
 const SOUND_PREF_KEY = "chromaweld.soundEnabled";
+const THEME_PREF_KEY = "chromaweld.theme";
 
 const MODE_CONFIGS = {
   tutorial: {
@@ -37,8 +42,8 @@ const MODE_CONFIGS = {
     name: "Tutorial",
     size: 3,
     trayCount: 4,
-    seconds: 90,
-    target: 240,
+    seconds: 70,
+    coreCount: 2,
     hintCost: 0,
   },
   sprint: {
@@ -46,8 +51,8 @@ const MODE_CONFIGS = {
     name: "Sprint",
     size: 4,
     trayCount: 5,
-    seconds: 75,
-    target: 550,
+    seconds: 65,
+    coreCount: 4,
     hintCost: 10,
   },
   rush: {
@@ -55,8 +60,8 @@ const MODE_CONFIGS = {
     name: "Rush",
     size: 6,
     trayCount: 6,
-    seconds: 115,
-    target: 1500,
+    seconds: 100,
+    coreCount: 7,
     hintCost: 15,
   },
   gauntlet: {
@@ -64,8 +69,8 @@ const MODE_CONFIGS = {
     name: "Gauntlet",
     size: 8,
     trayCount: 7,
-    seconds: 150,
-    target: 3100,
+    seconds: 130,
+    coreCount: 10,
     hintCost: 20,
   },
 };
@@ -90,12 +95,17 @@ const PALETTE = [
 
 let state = createEmptyState();
 let soundEnabled = readSoundPreference();
+let currentTheme = readThemePreference();
+let pendingTutorialModeId = "tutorial";
 const audio = createAudioEngine();
 
 function createEmptyState() {
   return {
     mode: null,
     board: [],
+    cores: new Set(),
+    litCores: new Set(),
+    chargedCells: new Map(),
     deck: [],
     tray: [],
     selectedTileId: null,
@@ -110,6 +120,7 @@ function createEmptyState() {
     roundOver: false,
     timerId: null,
     placements: 0,
+    pulseCells: [],
   };
 }
 
@@ -147,6 +158,23 @@ function writeSoundPreference(isEnabled) {
     localStorage.setItem(SOUND_PREF_KEY, String(isEnabled));
   } catch {
     // The setting is optional; the audio toggle still works for this session.
+  }
+}
+
+function readThemePreference() {
+  try {
+    const savedTheme = localStorage.getItem(THEME_PREF_KEY);
+    return savedTheme === "light" ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+}
+
+function writeThemePreference(theme) {
+  try {
+    localStorage.setItem(THEME_PREF_KEY, theme);
+  } catch {
+    // Theme persistence is optional.
   }
 }
 
@@ -285,6 +313,13 @@ function renderSoundButton() {
   soundButton.classList.toggle("is-active", soundEnabled);
 }
 
+function renderThemeButton() {
+  const isDark = currentTheme === "dark";
+  themeButton.textContent = isDark ? "Dark" : "Light";
+  themeButton.setAttribute("aria-pressed", String(isDark));
+  themeButton.classList.toggle("is-active", isDark);
+}
+
 function setSoundEnabled(isEnabled) {
   soundEnabled = isEnabled;
   writeSoundPreference(soundEnabled);
@@ -295,6 +330,17 @@ function setSoundEnabled(isEnabled) {
   } else {
     audio.stop();
   }
+}
+
+function setTheme(theme) {
+  currentTheme = theme === "light" ? "light" : "dark";
+  document.documentElement.dataset.theme = currentTheme;
+  writeThemePreference(currentTheme);
+  renderThemeButton();
+}
+
+function toggleTheme() {
+  setTheme(currentTheme === "dark" ? "light" : "dark");
 }
 
 function randomPaletteId() {
@@ -466,18 +512,22 @@ function findBestMove(tiles = state.tray) {
         const result = validatePlacement(tile, index, rotation);
 
         if (result.ok) {
+          const coreBonus =
+            state.cores.has(index) && !state.litCores.has(index) ? 20 : 0;
+          const fluxBonus = state.chargedCells.has(index) ? 8 : 0;
           moves.push({
             tileId: tile.id,
             index,
             rotation,
             matches: result.matches,
+            priority: result.matches * 10 + coreBonus + fluxBonus,
           });
         }
       }
     }
   }
 
-  moves.sort((a, b) => b.matches - a.matches);
+  moves.sort((a, b) => b.priority - a.priority || b.matches - a.matches);
   return moves[0] ?? null;
 }
 
@@ -508,6 +558,113 @@ function ensureTrayHasMove() {
 
 function selectedTile() {
   return state.tray.find((tile) => tile.id === state.selectedTileId) ?? null;
+}
+
+function createCoreIndexes(size, count, seedIndex, modeId) {
+  if (modeId === "tutorial") {
+    return new Set(
+      [indexFor(0, 1, size), indexFor(2, 1, size)].slice(0, count),
+    );
+  }
+
+  const seed = coordinatesFor(seedIndex, size);
+  const candidates = [];
+
+  for (let index = 0; index < size * size; index += 1) {
+    if (index === seedIndex) {
+      continue;
+    }
+
+    const { x, y } = coordinatesFor(index, size);
+    const distance = Math.abs(seed.x - x) + Math.abs(seed.y - y);
+
+    candidates.push({ index, distance });
+  }
+
+  return new Set(
+    shuffle(candidates)
+      .sort((a, b) => b.distance - a.distance)
+      .slice(0, count)
+      .map((candidate) => candidate.index),
+  );
+}
+
+function chargedCellCount() {
+  return [...state.chargedCells.keys()].filter((index) => !state.board[index])
+    .length;
+}
+
+function isCellCharged(index) {
+  return state.chargedCells.has(index) && !state.board[index];
+}
+
+function ageChargedCells(placedIndex) {
+  const nextCharges = new Map();
+
+  for (const [index, turns] of state.chargedCells.entries()) {
+    if (index === placedIndex || state.board[index] || turns <= 1) {
+      continue;
+    }
+
+    nextCharges.set(index, turns - 1);
+  }
+
+  state.chargedCells = nextCharges;
+}
+
+function chargeNearbyCells(index, matches) {
+  if (matches < 2) {
+    state.pulseCells = [];
+    return [];
+  }
+
+  const size = boardSize();
+  const radius = matches >= 3 ? 2 : 1;
+  const origin = coordinatesFor(index, size);
+  const charged = [];
+
+  for (let y = origin.y - radius; y <= origin.y + radius; y += 1) {
+    for (let x = origin.x - radius; x <= origin.x + radius; x += 1) {
+      if (x < 0 || x >= size || y < 0 || y >= size) {
+        continue;
+      }
+
+      const distance = Math.abs(origin.x - x) + Math.abs(origin.y - y);
+
+      if (distance === 0 || distance > radius) {
+        continue;
+      }
+
+      const chargedIndex = indexFor(x, y, size);
+
+      if (state.board[chargedIndex]) {
+        continue;
+      }
+
+      state.chargedCells.set(chargedIndex, 3);
+      charged.push(chargedIndex);
+    }
+  }
+
+  state.pulseCells = charged;
+  window.setTimeout(() => {
+    if (state.pulseCells.length === 0) {
+      return;
+    }
+
+    state.pulseCells = [];
+    render();
+  }, 460);
+  return charged;
+}
+
+function lightCoreAt(index) {
+  if (!state.cores.has(index) || state.litCores.has(index)) {
+    return false;
+  }
+
+  state.litCores.add(index);
+  return true;
 }
 
 function createTileFace(tile) {
@@ -584,6 +741,8 @@ function renderBoard() {
 
   for (let index = 0; index < state.board.length; index += 1) {
     const placedTile = state.board[index];
+    const isCore = state.cores.has(index);
+    const isLitCore = state.litCores.has(index);
     const placement =
       activeTile && !state.roundOver ? validatePlacement(activeTile, index) : null;
     const { x, y } = coordinatesFor(index);
@@ -592,6 +751,10 @@ function renderBoard() {
       "cell",
       placedTile ? "is-filled" : "",
       placedTile?.locked ? "is-anchor" : "",
+      isCore ? "is-core" : "",
+      isLitCore ? "is-lit-core" : "",
+      isCellCharged(index) ? "is-charged" : "",
+      state.pulseCells.includes(index) ? "is-pulse" : "",
       placement?.ok ? "is-placeable" : "",
       state.hint?.index === index ? "is-hint" : "",
       state.invalidIndex === index ? "is-invalid" : "",
@@ -603,8 +766,8 @@ function renderBoard() {
     cell.setAttribute(
       "aria-label",
       placedTile
-        ? `Row ${y + 1}, column ${x + 1}. ${describeTile(placedTile)}`
-        : `Empty row ${y + 1}, column ${x + 1}`,
+        ? `Row ${y + 1}, column ${x + 1}. ${isLitCore ? "Lit core. " : ""}${describeTile(placedTile)}`
+        : `Empty row ${y + 1}, column ${x + 1}. ${isCore ? "Core. " : ""}${isCellCharged(index) ? "Charged. " : ""}`,
     );
     cell.addEventListener("click", () => placeSelectedTile(index));
     cell.addEventListener("dragover", (event) => {
@@ -698,11 +861,18 @@ function renderTray() {
 
 function renderStats() {
   const remainingTiles = state.deck.length + state.tray.length;
-  const progress = Math.min(100, (state.score / state.mode.target) * 100);
+  const progress = Math.min(
+    100,
+    (state.litCores.size / state.mode.coreCount) * 100,
+  );
 
-  modeLabelElement.textContent = `${state.mode.name} ${state.mode.size}x${state.mode.size}`;
+  modeLabelElement.textContent =
+    state.mode.id === "tutorial"
+      ? state.mode.name
+      : `${state.mode.name} ${state.mode.size}x${state.mode.size}`;
   scoreElement.textContent = String(state.score);
-  targetScoreElement.textContent = String(state.mode.target);
+  coresLitElement.textContent = `${state.litCores.size}/${state.mode.coreCount}`;
+  fluxCountElement.textContent = String(chargedCellCount());
   streakElement.textContent = String(state.streak);
   comboLabelElement.textContent = `Chain x${state.streak}`;
   tilesLeftElement.textContent = String(remainingTiles);
@@ -745,7 +915,14 @@ function showMenu() {
   menuScreen.hidden = false;
   gameScreen.hidden = true;
   menuButton.hidden = true;
+  tutorialModal.hidden = true;
   renderMenuBests();
+}
+
+function showTutorialPopup(modeId) {
+  pendingTutorialModeId = modeId;
+  tutorialModal.hidden = false;
+  tutorialStartButton.focus();
 }
 
 function startRound(modeId) {
@@ -765,6 +942,7 @@ function startRound(modeId) {
   state.mode = mode;
   state.board = Array.from({ length: mode.size * mode.size }, () => null);
   state.board[seedIndex] = seedTile;
+  state.cores = createCoreIndexes(mode.size, mode.coreCount, seedIndex, mode.id);
   state.placements = 1;
   state.deck = shuffle(deck);
   state.remainingSeconds = mode.seconds;
@@ -774,8 +952,8 @@ function startRound(modeId) {
   state.selectedTileId = state.tray[0]?.id ?? null;
   state.message =
     mode.id === "tutorial"
-      ? "Tutorial: use the glowing spaces to learn the weld."
-      : "Reach the target before time runs out.";
+      ? "Light the cores."
+      : "Light every core before the clock ends.";
 
   menuScreen.hidden = true;
   gameScreen.hidden = false;
@@ -825,12 +1003,24 @@ function updateBestScore() {
   renderMenuBests();
 }
 
-function scorePlacement(matches) {
+function scorePlacement(matches, options = {}) {
+  const { wasCharged = false, coreLit = false, chargedCount = 0 } = options;
   const base = 45;
   const matchBonus = matches * 35;
   const chainBonus = state.streak * 14;
-  const gain = base + matchBonus + chainBonus;
-  const timeGain = Math.min(8, 1 + matches + Math.floor(state.streak / 3));
+  const fluxBonus = wasCharged ? 90 : 0;
+  const coreBonus = coreLit ? 180 : 0;
+  const surgeBonus = chargedCount * 6;
+  const gain = base + matchBonus + chainBonus + fluxBonus + coreBonus + surgeBonus;
+  const timeGain = Math.min(
+    12,
+    1 +
+      matches +
+      Math.floor(state.streak / 3) +
+      (wasCharged ? 4 : 0) +
+      (coreLit ? 5 : 0) +
+      (matches >= 3 ? 2 : 0),
+  );
   state.score += gain;
   state.remainingSeconds += timeGain;
   return { gain, timeGain };
@@ -863,13 +1053,21 @@ function placeSelectedTile(index) {
     return;
   }
 
+  const wasCharged = isCellCharged(index);
   state.board[index] = tile;
   state.tray = state.tray.filter((candidate) => candidate.id !== tile.id);
   state.streak += 1;
   state.placements += 1;
 
-  const { gain, timeGain } = scorePlacement(result.matches);
-  audio.effect(result.matches >= 3 ? "combo" : "place");
+  ageChargedCells(index);
+  const coreLit = lightCoreAt(index);
+  const chargedCells = chargeNearbyCells(index, result.matches);
+  const { gain, timeGain } = scorePlacement(result.matches, {
+    wasCharged,
+    coreLit,
+    chargedCount: chargedCells.length,
+  });
+  audio.effect(result.matches >= 3 || coreLit || wasCharged ? "combo" : "place");
   state.hint = null;
   drawTrayTiles();
   ensureTrayHasMove();
@@ -879,20 +1077,26 @@ function placeSelectedTile(index) {
   const remaining = state.deck.length + state.tray.length;
   const bestMove = findBestMove();
 
-  if (state.score >= state.mode.target) {
-    endRound(true, `Target hit with ${formatTime(state.remainingSeconds)} left.`);
+  if (state.litCores.size >= state.mode.coreCount) {
+    endRound(true, `All cores lit with ${formatTime(state.remainingSeconds)} left.`);
     return;
   }
 
   if (remaining === 0) {
-    endRound(true, "Full board weld.");
+    endRound(false, "The board filled before every core lit.");
     return;
   }
 
   if (!bestMove) {
     state.message = "No legal weld is visible. Remix quickly.";
+  } else if (coreLit) {
+    state.message = `Core lit +${gain}, +${timeGain} sec.`;
+  } else if (wasCharged) {
+    state.message = `Flux weld +${gain}, +${timeGain} sec.`;
   } else if (result.matches >= 3) {
-    state.message = `Mega weld +${gain}, +${timeGain} sec.`;
+    state.message = `Burst weld charged ${chargedCells.length} sockets. +${gain}`;
+  } else if (result.matches === 2) {
+    state.message = `Pulse weld charged ${chargedCells.length} sockets. +${gain}`;
   } else {
     state.message = `Weld +${gain}, +${timeGain} sec.`;
   }
@@ -978,9 +1182,9 @@ function endRound(didWin, summary) {
   stopTimer();
   state.roundOver = true;
   updateBestScore();
-  roundKicker.textContent = didWin ? "Target cleared" : "Round over";
-  roundTitle.textContent = didWin ? "Weld complete" : "Clock cooled";
-  roundSummary.textContent = `${summary} Score ${state.score}. Best ${state.bestScore}.`;
+  roundKicker.textContent = didWin ? "Cores lit" : "Round over";
+  roundTitle.textContent = didWin ? "Core chain live" : "Core chain lost";
+  roundSummary.textContent = `${summary} Cores ${state.litCores.size}/${state.mode.coreCount}. Score ${state.score}. Best ${state.bestScore}.`;
   state.message = didWin
     ? "Pick the next size or replay for a better chain."
     : "Retry or drop to a smaller grid.";
@@ -1033,14 +1237,26 @@ function handleKeydown(event) {
 }
 
 for (const button of modeButtons) {
-  button.addEventListener("click", () => startRound(button.dataset.mode));
+  button.addEventListener("click", () => {
+    if (button.dataset.mode === "tutorial") {
+      showTutorialPopup(button.dataset.mode);
+      return;
+    }
+
+    startRound(button.dataset.mode);
+  });
 }
 
 soundButton.addEventListener("click", () => setSoundEnabled(!soundEnabled));
+themeButton.addEventListener("click", toggleTheme);
 menuButton.addEventListener("click", showMenu);
 roundMenuButton.addEventListener("click", showMenu);
 retryButton.addEventListener("click", () => startRound(state.mode?.id ?? "sprint"));
 nextButton.addEventListener("click", () => startRound(nextMode()));
+tutorialStartButton.addEventListener("click", () => {
+  tutorialModal.hidden = true;
+  startRound(pendingTutorialModeId);
+});
 rotateButton.addEventListener("click", rotateSelectedTile);
 hintButton.addEventListener("click", showHint);
 mixButton.addEventListener("click", mixTray);
@@ -1054,5 +1270,6 @@ document.addEventListener("visibilitychange", () => {
 });
 
 renderPreviewGrid();
+setTheme(currentTheme);
 renderSoundButton();
 showMenu();

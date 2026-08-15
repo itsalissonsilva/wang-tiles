@@ -13,7 +13,7 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <div>
+        <div class="brand">
           <p class="eyebrow">Wang tile arcade</p>
           <h1>Chromaweld Rush</h1>
         </div>
@@ -28,6 +28,14 @@
           </button>
           <button
             class="secondary-button"
+            id="theme-button"
+            type="button"
+            aria-pressed="true"
+          >
+            Dark
+          </button>
+          <button
+            class="secondary-button"
             id="menu-button"
             type="button"
             hidden
@@ -38,47 +46,38 @@
       </header>
 
       <section id="menu-screen" class="menu-screen" aria-label="Level select">
-        <div class="menu-copy">
-          <p class="eyebrow">Level select</p>
-          <h2>Beat the clock by welding matching color edges.</h2>
-          <p class="menu-text">
-            The small board teaches the rhythm. Larger boards demand faster
-            reads, longer chains, and sharper tray choices.
-          </p>
+        <div class="menu-stage">
+          <p class="eyebrow">Select level</p>
           <div
             class="preview-grid"
             id="preview-grid"
             aria-label="Tutorial preview"
           ></div>
-          <div class="tutorial-note">
-            <strong>Tutorial:</strong> rotate tiles until every touching edge
-            matches. Multi-edge welds add time and make the score jump.
-          </div>
         </div>
 
         <div class="mode-list" aria-label="Choose a board size">
           <button class="mode-card" type="button" data-mode="tutorial">
             <span>Tutorial</span>
-            <strong>3 x 3</strong>
-            <small>90 sec / 240 target</small>
+            <strong>Tiny</strong>
+            <small>2 cores / 70 sec</small>
             <em data-best-for="tutorial">Best 0</em>
           </button>
           <button class="mode-card" type="button" data-mode="sprint">
             <span>Sprint</span>
             <strong>4 x 4</strong>
-            <small>75 sec / 550 target</small>
+            <small>4 cores / 65 sec</small>
             <em data-best-for="sprint">Best 0</em>
           </button>
           <button class="mode-card" type="button" data-mode="rush">
             <span>Rush</span>
             <strong>6 x 6</strong>
-            <small>115 sec / 1500 target</small>
+            <small>7 cores / 100 sec</small>
             <em data-best-for="rush">Best 0</em>
           </button>
           <button class="mode-card" type="button" data-mode="gauntlet">
             <span>Gauntlet</span>
             <strong>8 x 8</strong>
-            <small>150 sec / 3100 target</small>
+            <small>10 cores / 130 sec</small>
             <em data-best-for="gauntlet">Best 0</em>
           </button>
         </div>
@@ -146,8 +145,12 @@
               <strong id="score">0</strong>
             </div>
             <div>
-              <span class="metric-label">Target</span>
-              <strong id="target-score">0</strong>
+              <span class="metric-label">Cores</span>
+              <strong id="cores-lit">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">Flux</span>
+              <strong id="flux-count">0</strong>
             </div>
             <div>
               <span class="metric-label">Chain</span>
@@ -215,6 +218,24 @@
           </aside>
         </section>
       </section>
+
+      <div
+        class="modal-backdrop"
+        id="tutorial-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tutorial-title"
+        hidden
+      >
+        <section class="tutorial-popup">
+          <span class="eyebrow">Tiny tutorial</span>
+          <strong id="tutorial-title">Light every core.</strong>
+          <p>Match edges. Strong welds charge nearby sockets.</p>
+          <button class="primary-button" id="tutorial-start-button" type="button">
+            Start
+          </button>
+        </section>
+      </div>
     </main>
 
     <script src="src/main.js" defer></script>

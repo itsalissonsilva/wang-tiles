@@ -2,7 +2,7 @@
 
 Chromaweld Rush is a browser-only arcade puzzle game inspired by Wang tiles.
 The player places colorful square tiles whose edge colors must match their
-neighbors while chasing a score target against the clock.
+neighbors while lighting weld cores against the clock.
 
 ## Run
 
@@ -13,9 +13,12 @@ Open `index.html` in a browser. No install or build step is required.
 - Choose a board size from the menu.
 - Select a tray tile, rotate it as needed, then place it next to the seed tile.
 - Every touching edge must match color.
-- Bigger edge matches and longer chains score more and add time.
+- Light every core before time runs out.
+- Strong welds charge nearby sockets for score and time boosts.
+- Bigger edge matches and longer chains score more.
 - Use hint when you want the board to show a strong legal move.
 - Soundtrack and effects are generated in the browser with Web Audio.
+- Dark theme is the default, with a light theme toggle in the header.
 
 ## Deployment
 
