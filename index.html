@@ -12,39 +12,14 @@
   </head>
   <body>
     <main class="app-shell">
-      <header class="topbar">
-        <div class="topbar-actions">
-          <button
-            class="secondary-button"
-            id="sound-button"
-            type="button"
-            aria-pressed="true"
-          >
-            Sound On
-          </button>
-          <button
-            class="secondary-button"
-            id="theme-button"
-            type="button"
-            aria-pressed="true"
-          >
-            Dark
-          </button>
-          <button
-            class="secondary-button"
-            id="menu-button"
-            type="button"
-            hidden
-          >
-            Menu
-          </button>
-        </div>
-      </header>
-
       <section id="menu-screen" class="menu-screen" aria-label="Level select">
+        <div class="menu-title">
+          <h1>Chromaweld Rush</h1>
+        </div>
         <div class="mode-list" aria-label="Choose a board size">
           <button class="mode-card" type="button" data-mode="tutorial">
-            <strong>Tiny Tutorial</strong>
+            <span>Tiny</span>
+            <strong>Tutorial</strong>
             <small>2 cores / 70 sec</small>
             <em data-best-for="tutorial">Best 0</em>
           </button>
@@ -204,6 +179,28 @@
           </aside>
         </section>
       </section>
+
+      <div class="settings-row" aria-label="Settings">
+        <button
+          class="secondary-button"
+          id="sound-button"
+          type="button"
+          aria-pressed="true"
+        >
+          Sound On
+        </button>
+        <button
+          class="secondary-button"
+          id="theme-button"
+          type="button"
+          aria-pressed="true"
+        >
+          Dark
+        </button>
+        <button class="secondary-button" id="menu-button" type="button" hidden>
+          Menu
+        </button>
+      </div>
 
       <div
         class="modal-backdrop"
