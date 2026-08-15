@@ -15,6 +15,7 @@ Open `index.html` in a browser. No install or build step is required.
 - Every touching edge must match color.
 - Bigger edge matches and longer chains score more and add time.
 - Use hint when you want the board to show a strong legal move.
+- Soundtrack and effects are generated in the browser with Web Audio.
 
 ## Deployment
 

@@ -18,6 +18,7 @@ const roundPanel = document.querySelector("#round-panel");
 const roundKicker = document.querySelector("#round-kicker");
 const roundTitle = document.querySelector("#round-title");
 const roundSummary = document.querySelector("#round-summary");
+const soundButton = document.querySelector("#sound-button");
 const menuButton = document.querySelector("#menu-button");
 const rotateButton = document.querySelector("#rotate-button");
 const hintButton = document.querySelector("#hint-button");
@@ -28,6 +29,7 @@ const roundMenuButton = document.querySelector("#round-menu-button");
 const modeButtons = [...document.querySelectorAll("[data-mode]")];
 
 const BEST_SCORE_PREFIX = "chromaweld.bestScore";
+const SOUND_PREF_KEY = "chromaweld.soundEnabled";
 
 const MODE_CONFIGS = {
   tutorial: {
@@ -87,6 +89,8 @@ const PALETTE = [
 ];
 
 let state = createEmptyState();
+let soundEnabled = readSoundPreference();
+const audio = createAudioEngine();
 
 function createEmptyState() {
   return {
@@ -127,6 +131,169 @@ function writeBestScore(modeId, score) {
     localStorage.setItem(`${BEST_SCORE_PREFIX}.${modeId}`, String(score));
   } catch {
     // Private browsing modes may block storage; the round can continue.
+  }
+}
+
+function readSoundPreference() {
+  try {
+    return localStorage.getItem(SOUND_PREF_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function writeSoundPreference(isEnabled) {
+  try {
+    localStorage.setItem(SOUND_PREF_KEY, String(isEnabled));
+  } catch {
+    // The setting is optional; the audio toggle still works for this session.
+  }
+}
+
+function createAudioEngine() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  const leadNotes = [261.63, 329.63, 392, 493.88, 587.33, 493.88, 392, 329.63];
+  const bassNotes = [130.81, 130.81, 196, 146.83];
+  let context = null;
+  let master = null;
+  let musicTimer = null;
+  let step = 0;
+
+  function ensureContext() {
+    if (!AudioContext) {
+      return null;
+    }
+
+    if (!context) {
+      context = new AudioContext();
+      master = context.createGain();
+      master.gain.value = 0.075;
+      master.connect(context.destination);
+    }
+
+    return context;
+  }
+
+  function pluck(frequency, start, duration, type, gainValue) {
+    const oscillator = context.createOscillator();
+    const filter = context.createBiquadFilter();
+    const gain = context.createGain();
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, start);
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(1500, start);
+    filter.frequency.exponentialRampToValueAtTime(420, start + duration);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+    oscillator.connect(filter);
+    filter.connect(gain);
+    gain.connect(master);
+    oscillator.start(start);
+    oscillator.stop(start + duration + 0.025);
+  }
+
+  function playStep() {
+    if (!context || context.state !== "running") {
+      return;
+    }
+
+    const now = context.currentTime;
+    pluck(leadNotes[step % leadNotes.length], now, 0.15, "triangle", 0.18);
+
+    if (step % 4 === 0) {
+      pluck(bassNotes[Math.floor(step / 4) % bassNotes.length], now, 0.28, "sine", 0.22);
+    }
+
+    step += 1;
+  }
+
+  function effect(kind) {
+    if (!soundEnabled) {
+      return;
+    }
+
+    const liveContext = ensureContext();
+
+    if (!liveContext || liveContext.state !== "running") {
+      return;
+    }
+
+    const now = liveContext.currentTime;
+
+    if (kind === "error") {
+      pluck(110, now, 0.18, "sawtooth", 0.14);
+      return;
+    }
+
+    if (kind === "win") {
+      pluck(523.25, now, 0.2, "triangle", 0.22);
+      pluck(659.25, now + 0.08, 0.2, "triangle", 0.18);
+      pluck(783.99, now + 0.16, 0.28, "triangle", 0.16);
+      return;
+    }
+
+    if (kind === "lose") {
+      pluck(220, now, 0.22, "sine", 0.16);
+      pluck(164.81, now + 0.13, 0.32, "sine", 0.14);
+      return;
+    }
+
+    if (kind === "combo") {
+      pluck(659.25, now, 0.12, "triangle", 0.16);
+      pluck(987.77, now + 0.06, 0.14, "triangle", 0.12);
+      return;
+    }
+
+    if (kind === "hint") {
+      pluck(440, now, 0.08, "triangle", 0.11);
+      pluck(554.37, now + 0.05, 0.11, "triangle", 0.1);
+      return;
+    }
+
+    pluck(392, now, 0.1, "triangle", 0.11);
+  }
+
+  return {
+    async start() {
+      const liveContext = ensureContext();
+
+      if (!liveContext || musicTimer) {
+        return;
+      }
+
+      await liveContext.resume();
+      playStep();
+      musicTimer = window.setInterval(playStep, 230);
+    },
+    stop() {
+      if (musicTimer) {
+        window.clearInterval(musicTimer);
+      }
+
+      musicTimer = null;
+    },
+    effect,
+  };
+}
+
+function renderSoundButton() {
+  soundButton.textContent = soundEnabled ? "Sound On" : "Sound Off";
+  soundButton.setAttribute("aria-pressed", String(soundEnabled));
+  soundButton.classList.toggle("is-active", soundEnabled);
+}
+
+function setSoundEnabled(isEnabled) {
+  soundEnabled = isEnabled;
+  writeSoundPreference(soundEnabled);
+  renderSoundButton();
+
+  if (soundEnabled) {
+    audio.start();
+  } else {
+    audio.stop();
   }
 }
 
@@ -615,6 +782,10 @@ function startRound(modeId) {
   menuButton.hidden = false;
   render();
   startTimer();
+
+  if (soundEnabled) {
+    audio.start();
+  }
 }
 
 function startTimer() {
@@ -678,6 +849,7 @@ function placeSelectedTile(index) {
     state.remainingSeconds = Math.max(0, state.remainingSeconds - 4);
     state.message = result.reason;
     state.invalidIndex = index;
+    audio.effect("error");
     render();
     window.setTimeout(() => {
       state.invalidIndex = null;
@@ -697,6 +869,7 @@ function placeSelectedTile(index) {
   state.placements += 1;
 
   const { gain, timeGain } = scorePlacement(result.matches);
+  audio.effect(result.matches >= 3 ? "combo" : "place");
   state.hint = null;
   drawTrayTiles();
   ensureTrayHasMove();
@@ -737,6 +910,7 @@ function rotateSelectedTile() {
   tile.rotation = (tile.rotation + 1) % 4;
   state.hint = null;
   state.message = "Rotated.";
+  audio.effect("place");
   render();
 }
 
@@ -766,6 +940,7 @@ function showHint() {
   }
 
   state.hint = move;
+  audio.effect("hint");
   state.message =
     state.mode.hintCost > 0
       ? `Hint found. -${state.mode.hintCost} points.`
@@ -788,6 +963,7 @@ function mixTray() {
   state.score = Math.max(0, state.score - 15);
   state.remainingSeconds = Math.max(0, state.remainingSeconds - 3);
   state.message = "Tray remixed. -3 sec.";
+  audio.effect("hint");
   updateBestScore();
 
   if (state.remainingSeconds <= 0) {
@@ -808,6 +984,7 @@ function endRound(didWin, summary) {
   state.message = didWin
     ? "Pick the next size or replay for a better chain."
     : "Retry or drop to a smaller grid.";
+  audio.effect(didWin ? "win" : "lose");
   render();
 }
 
@@ -859,6 +1036,7 @@ for (const button of modeButtons) {
   button.addEventListener("click", () => startRound(button.dataset.mode));
 }
 
+soundButton.addEventListener("click", () => setSoundEnabled(!soundEnabled));
 menuButton.addEventListener("click", showMenu);
 roundMenuButton.addEventListener("click", showMenu);
 retryButton.addEventListener("click", () => startRound(state.mode?.id ?? "sprint"));
@@ -867,6 +1045,14 @@ rotateButton.addEventListener("click", rotateSelectedTile);
 hintButton.addEventListener("click", showHint);
 mixButton.addEventListener("click", mixTray);
 document.addEventListener("keydown", handleKeydown);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    audio.stop();
+  } else if (soundEnabled) {
+    audio.start();
+  }
+});
 
 renderPreviewGrid();
+renderSoundButton();
 showMenu();

@@ -156,6 +156,11 @@ h2 {
   transform: translateY(-1px);
 }
 
+.secondary-button.is-active {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgb(23 214 189 / 14%);
+}
+
 .secondary-button:focus-visible,
 .primary-button:focus-visible,
 .tool-button:focus-visible,
