@@ -5,226 +5,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="A fast browser puzzle game inspired by Wang tiles."
+      content="A browser puzzle about Wang tiles, local rules, and emergent patterns."
     />
-    <title>Chromaweld Rush</title>
+    <title>Wang Pattern Forge</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app-shell">
       <section id="menu-screen" class="menu-screen" aria-label="Level select">
         <div class="menu-title">
-          <h1>Chromaweld Rush</h1>
+          <p class="eyebrow">Wang tile puzzle</p>
+          <h1>Pattern Forge</h1>
+          <p class="tagline">Local rules. Global patterns.</p>
         </div>
-        <div class="mode-list" aria-label="Choose a board size">
-          <button class="mode-card" type="button" data-mode="tutorial">
-            <span>Tiny</span>
-            <strong>Tutorial</strong>
-            <small>2 cores / 70 sec</small>
-            <em data-best-for="tutorial">Best 0</em>
-          </button>
-          <button class="mode-card" type="button" data-mode="sprint">
-            <span>Sprint</span>
-            <strong>4 x 4</strong>
-            <small>4 cores / 65 sec</small>
-            <em data-best-for="sprint">Best 0</em>
-          </button>
-          <button class="mode-card" type="button" data-mode="rush">
-            <span>Rush</span>
-            <strong>6 x 6</strong>
-            <small>7 cores / 100 sec</small>
-            <em data-best-for="rush">Best 0</em>
-          </button>
-          <button class="mode-card" type="button" data-mode="gauntlet">
-            <span>Gauntlet</span>
-            <strong>8 x 8</strong>
-            <small>10 cores / 130 sec</small>
-            <em data-best-for="gauntlet">Best 0</em>
-          </button>
-        </div>
+        <div id="level-list" class="level-list" aria-label="Choose a pattern"></div>
+        <a class="legacy-link" href="legacy/chromaweld-rush/index.html">
+          Play archived Chromaweld Rush
+        </a>
       </section>
 
-      <section
-        id="game-screen"
-        class="game-screen"
-        aria-label="Chromaweld Rush game"
-        hidden
-      >
-        <section class="command-bar" aria-label="Round controls">
+      <section id="game-screen" class="game-screen" hidden>
+        <header class="game-header">
+          <button class="secondary-button" id="back-button" type="button">
+            Levels
+          </button>
           <div>
-            <span class="metric-label">Mode</span>
-            <strong id="mode-label">Sprint</strong>
+            <p class="eyebrow" id="level-kicker">Pattern</p>
+            <h1 id="level-title">Level</h1>
           </div>
-          <div class="tool-row">
+          <div class="settings-row">
             <button
-              class="tool-button"
-              id="rotate-button"
+              class="secondary-button"
+              id="theme-button"
               type="button"
-              aria-label="Rotate selected tile"
-              title="Rotate selected tile"
+              aria-pressed="true"
             >
-              Rot
+              Dark
             </button>
             <button
-              class="tool-button"
-              id="hint-button"
+              class="secondary-button"
+              id="sound-button"
               type="button"
-              aria-label="Show a strong match"
-              title="Show a strong match"
+              aria-pressed="true"
             >
-              Hint
-            </button>
-            <button
-              class="tool-button"
-              id="mix-button"
-              type="button"
-              aria-label="Remix tile tray"
-              title="Remix tile tray"
-            >
-              Mix
-            </button>
-            <button
-              class="tool-button"
-              id="retry-button"
-              type="button"
-              aria-label="Restart this round"
-              title="Restart this round"
-            >
-              Retry
+              Sound On
             </button>
           </div>
-        </section>
+        </header>
 
         <section class="game-layout">
-          <aside class="panel status-panel" aria-label="Round status">
-            <div class="urgent-metric" id="time-card">
-              <span class="metric-label">Time</span>
-              <strong id="time-left">0:00</strong>
+          <aside class="panel objective-panel">
+            <h2>Pattern Contract</h2>
+            <div class="metric-grid">
+              <div>
+                <span class="metric-label">Filled</span>
+                <strong id="filled-count">0/0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Threads</span>
+                <strong id="thread-count">0/0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Motifs</span>
+                <strong id="motif-count">0</strong>
+              </div>
+              <div>
+                <span class="metric-label">Repeats</span>
+                <strong id="repeat-count">0</strong>
+              </div>
             </div>
-            <div>
-              <span class="metric-label">Score</span>
-              <strong id="score">0</strong>
-            </div>
-            <div>
-              <span class="metric-label">Cores</span>
-              <strong id="cores-lit">0</strong>
-            </div>
-            <div>
-              <span class="metric-label">Flux</span>
-              <strong id="flux-count">0</strong>
-            </div>
-            <div>
-              <span class="metric-label">Chain</span>
-              <strong id="streak">0</strong>
-            </div>
-            <div>
-              <span class="metric-label">Tiles</span>
-              <strong id="tiles-left">0</strong>
-            </div>
-            <div>
-              <span class="metric-label">Best</span>
-              <strong id="best-score">0</strong>
-            </div>
+            <div id="goals" class="goals"></div>
+            <p id="message" class="message" role="status" aria-live="polite"></p>
           </aside>
 
-          <section class="board-panel" aria-label="Tile board">
-            <div class="board-frame">
-              <div
-                id="board"
-                class="board"
-                role="grid"
-                aria-label="Puzzle grid"
-              ></div>
-              <div class="goal-track" aria-label="Goal progress">
-                <span id="goal-meter"></span>
-              </div>
-              <p
-                id="message"
-                class="message"
-                role="status"
-                aria-live="polite"
-              ></p>
-            </div>
+          <section class="board-panel">
+            <div id="board" class="board" role="grid" aria-label="Pattern board"></div>
             <div
-              class="round-panel"
-              id="round-panel"
+              id="win-panel"
+              class="win-panel"
               role="status"
               aria-live="assertive"
               hidden
             >
-              <span id="round-kicker">Round over</span>
-              <strong id="round-title">Time</strong>
-              <p id="round-summary"></p>
-              <div class="round-actions">
+              <span class="eyebrow">Pattern accepted</span>
+              <strong id="win-title">Beautiful constraint.</strong>
+              <p id="win-summary"></p>
+              <div class="button-row">
                 <button class="primary-button" id="next-button" type="button">
-                  Next
+                  Next Pattern
                 </button>
-                <button
-                  class="secondary-button"
-                  id="round-menu-button"
-                  type="button"
-                >
-                  Menu
+                <button class="secondary-button" id="replay-button" type="button">
+                  Replay
                 </button>
               </div>
             </div>
           </section>
 
-          <div class="tray-column">
-            <aside class="panel tray-panel" aria-label="Available tiles">
-              <div class="tray-header">
-                <h2>Tile Tray</h2>
-                <span id="combo-label" class="combo-label">Chain x0</span>
-              </div>
-              <div id="tray" class="tray"></div>
-            </aside>
-            <div class="settings-row" aria-label="Settings">
-              <button
-                class="secondary-button"
-                id="sound-button"
-                type="button"
-                aria-pressed="true"
-              >
-                Sound On
+          <aside class="panel palette-panel">
+            <div class="palette-header">
+              <h2>Tile Alphabet</h2>
+              <span id="stock-count" class="stock-pill">0 left</span>
+            </div>
+            <div id="palette" class="palette"></div>
+            <div class="button-row">
+              <button class="tool-button" id="undo-button" type="button">
+                Undo
               </button>
-              <button
-                class="secondary-button"
-                id="theme-button"
-                type="button"
-                aria-pressed="true"
-              >
-                Dark
+              <button class="tool-button" id="clear-button" type="button">
+                Clear
               </button>
-              <button
-                class="secondary-button"
-                id="menu-button"
-                type="button"
-                hidden
-              >
-                Menu
+              <button class="tool-button" id="hint-button" type="button">
+                Hint
               </button>
             </div>
-          </div>
+          </aside>
         </section>
       </section>
-
-      <div
-        class="modal-backdrop"
-        id="tutorial-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tutorial-title"
-        hidden
-      >
-        <section class="tutorial-popup">
-          <span class="eyebrow">Tiny Tutorial</span>
-          <strong id="tutorial-title">Light every core.</strong>
-          <p>Match edges. Strong welds charge nearby sockets.</p>
-          <button class="primary-button" id="tutorial-start-button" type="button">
-            Start
-          </button>
-        </section>
-      </div>
     </main>
 
     <script src="src/main.js" defer></script>
